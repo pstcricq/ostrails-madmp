@@ -47,3 +47,7 @@ class SchemaFileError(ProblemsError):
 
 class RulesFileError(SchemaFileError):
     """A rules file is malformed (schema, coherence or layout)."""
+
+
+class ProjectFileError(SchemaFileError):
+    """A project file is malformed (schema or layout)."""

@@ -64,6 +64,11 @@ validate-rules:
   script:
     - make validate-rules
 
+validate-projects:
+  extends: .python
+  script:
+    - make validate-projects
+
 test-unit:
   extends: .python
   script:

@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from madmp.definitions.schema import schema_problems, validator_for
 from madmp.errors import SchemaFileError
 
@@ -27,7 +29,7 @@ class Kind:
     schema: Path
     # The field a file's directory is named after.
     key: str
-    # The one format the kind's files are written in: ".json".
+    # The one format the kind's files are written in, ".json" or ".yaml".
     suffix: str
     error: type[SchemaFileError]
     # Every coherence problem of one document, once its schema passed. None
@@ -43,6 +45,7 @@ class Kind:
 # What reads each format, and what a syntax error is called.
 _READERS: dict[str, tuple[Callable[[str], Any], type[Exception], str]] = {
     ".json": (json.loads, json.JSONDecodeError, "JSON"),
+    ".yaml": (yaml.safe_load, yaml.YAMLError, "YAML"),
 }
 
 
@@ -91,6 +94,8 @@ def load(kind: Kind, path: str | Path) -> dict[str, Any]:
     """
     path = Path(path)
     doc = _read(kind, path)
+    # An empty YAML file reads as None, which the schema refuses as a
+    # non-object.
     problems = schema_problems(validator_for(kind.schema), doc)
     if not problems:
         problems = _layout_problems(kind, path, doc)

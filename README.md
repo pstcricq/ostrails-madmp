@@ -7,12 +7,14 @@ Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common 
 ## How it works
 
 1. **Rules.** A standard at one version is one JSON file: the base standard, the RDA DMP Common Standard, and the extensions that tighten it, such as the OSTrails profile. An extension may only tighten what the base defines.
+2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from.
 
 ## What is here
 
 | | |
 |---|---|
 | [`definitions/rules/`](definitions/rules) | the rules, one JSON file per standard per version, `<standard>/<version>.json`, and `rules.schema.json` |
+| [`definitions/projects/`](definitions/projects) | the projects, one YAML file per project per version, `<id>/<version>.yaml`, and `project.schema.json` |
 | [`src/madmp/`](src/madmp) | the `madmp` command: validation |
 | [`tests/`](tests) | the unit tests |
 
@@ -25,7 +27,7 @@ Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common 
 
 ```bash
 make install
-make validate-rules
+make validate-all
 ```
 
 `make install` sets up the locked environment in `.venv`, the `madmp` command and the git hooks. `make help` lists every target, `uv run madmp --help` every command.
@@ -38,7 +40,9 @@ Each `madmp` command has a make target of the same name: `madmp validate rules` 
 
 | | |
 |---|---|
-| `make validate-rules` | every rules file against the meta-schema, its path and its coherence checks |
+| `make validate-all` | every rules file and project against its schema and its path |
+
+`make validate-rules` and `validate-projects` each run one step of `validate-all`.
 
 ## CI
 

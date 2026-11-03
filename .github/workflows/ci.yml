@@ -49,6 +49,15 @@ jobs:
       - name: Every rules file against the meta-schema
         run: make validate-rules
 
+  validate-projects:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - *install
+      - name: Every project against its schema
+        run: make validate-projects
+
   test-unit:
     runs-on: ubuntu-latest
     steps:

@@ -1,24 +1,39 @@
-"""madmp validate on the definitions of the repository and on files written for a test, the lines it prints and its exit code."""
+"""madmp validate on the definitions of the repository and on files written for a test, the steps it runs, in which order, the lines it prints and its exit code."""
 
 import re
 
 import pytest
 
 from madmp.cli import main
-from madmp.definitions import RULES, files
+from madmp.definitions import KINDS, RULES, files
 
 
-def test_validate_rules_passes_on_the_repository(capsys):
-    assert main(["validate", "rules"]) == 0
+def test_validate_all_runs_every_step_and_says_each(capsys):
+    assert main(["validate", "all"]) == 0
     out = capsys.readouterr().out
-    assert re.search(r"^rules: \d+ files? valid\.$", out, re.MULTILINE)
+    for kind in KINDS:
+        assert re.search(rf"^{kind.name}: \d+ files? valid\.$", out, re.MULTILINE)
+
+
+@pytest.mark.parametrize("step", [kind.name for kind in KINDS])
+def test_validate_runs_one_step(step, capsys):
+    assert main(["validate", step]) == 0
+    assert capsys.readouterr().out.count("\n\n") == 1
+
+
+def test_validate_all_stops_at_the_first_step_that_fails(monkeypatch, capsys):
+    monkeypatch.setattr("madmp.cli.validate.files", lambda kind: [])
+    assert main(["validate", "all"]) == 1
+    captured = capsys.readouterr()
+    assert "rules: no file found" in captured.err
+    assert "projects" not in captured.out + captured.err
 
 
 def test_validate_names_its_step(capsys):
     with pytest.raises(SystemExit) as refused:
         main(["validate"])
     assert refused.value.code == 2
-    assert "rules" in capsys.readouterr().err
+    assert "all" in capsys.readouterr().err
 
 
 def test_validate_fails_with_no_file(monkeypatch, capsys):

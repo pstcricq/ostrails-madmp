@@ -1,4 +1,6 @@
-"""The ``madmp validate`` commands: ``rules``."""
+"""The ``madmp validate`` commands: ``rules``, ``projects``, and ``all``
+for every one of them in this order.
+"""
 
 from __future__ import annotations
 
@@ -37,11 +39,23 @@ _VALIDATE_STEPS = {
 
 
 def _validate(args: argparse.Namespace) -> int:
-    return _VALIDATE_STEPS[args.step]()
+    """One step, or ``all`` in order, a blank line between two, stopping at
+    the first that fails."""
+    names = list(_VALIDATE_STEPS) if args.step == "all" else [args.step]
+    for number, name in enumerate(names):
+        if number:
+            print()
+        if _VALIDATE_STEPS[name]():
+            return 1
+    return 0
 
 
 def add_commands(commands: argparse._SubParsersAction) -> None:
     """Add ``madmp validate`` to the madmp command."""
     validate = commands.add_parser("validate", help="validate the definitions")
-    validate.add_argument("step", choices=list(_VALIDATE_STEPS), help="the step")
+    validate.add_argument(
+        "step",
+        choices=[*_VALIDATE_STEPS, "all"],
+        help="one step, or all in this order",
+    )
     validate.set_defaults(run=_validate)

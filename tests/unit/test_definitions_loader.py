@@ -113,6 +113,10 @@ def test_the_schema_beside_the_files_is_not_one_of_them(kind, tmp_path):
 # The real kinds
 
 
+def test_the_kinds_in_their_order():
+    assert [kind.name for kind in KINDS] == ["rules", "projects"]
+
+
 @pytest.mark.parametrize("kind", KINDS, ids=lambda k: k.name)
 def test_every_real_file_of_every_kind_loads(kind):
     paths = files(kind)

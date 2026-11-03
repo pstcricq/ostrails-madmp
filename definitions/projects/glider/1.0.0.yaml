@@ -1,0 +1,14 @@
+# A project at one version: its own facts, then the rules it is built from.
+# Filed as <id>/<version>.yaml.
+
+id: glider
+organizationId: socib
+name: "SOCIB Glider"
+version: "1.0.0"
+author: "Pierre St-Cricq dit Lompre ([SOCIB](https://www.socib.es))"
+license: "CC BY 4.0"
+
+# Each rules file at one version -> definitions/rules/<standard>/<version>.json
+rules:
+  - rda_dcs: "1.0.0"
+  - ostrails: "1.0.0"

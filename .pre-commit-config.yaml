@@ -46,6 +46,13 @@ repos:
         files: ^(definitions/rules|src/madmp/definitions)/
         pass_filenames: false
 
+      - id: validate-projects
+        name: projects against their schema
+        entry: make validate-projects
+        language: system
+        files: ^(definitions/projects|src/madmp/definitions)/
+        pass_filenames: false
+
       - id: test-unit
         name: unit tests
         entry: make test-unit

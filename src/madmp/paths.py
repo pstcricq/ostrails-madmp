@@ -11,3 +11,5 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFINITIONS_DIR = ROOT / "definitions"
 RULES_DIR = DEFINITIONS_DIR / "rules"
 RULES_SCHEMA = RULES_DIR / "rules.schema.json"
+PROJECTS_DIR = DEFINITIONS_DIR / "projects"
+PROJECT_SCHEMA = PROJECTS_DIR / "project.schema.json"

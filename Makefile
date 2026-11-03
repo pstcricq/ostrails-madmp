@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-unit validate-rules ci clean
+.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -42,8 +42,14 @@ pre-commit: ## Run every pre-commit hook on every file
 
 ##@ Validate (madmp validate)
 
+validate-all: ## Run every validate-* step, stopping at the first failure
+	$(call run,$(RUN) madmp validate all)
+
 validate-rules: ## Check each rules file: meta-schema, path, coherence
 	$(call run,$(RUN) madmp validate rules)
+
+validate-projects: ## Check each project: schema and path
+	$(call run,$(RUN) madmp validate projects)
 
 ##@ Tests
 
@@ -52,7 +58,7 @@ test-unit: ## Run the tests that need only the repository
 
 ##@ CI
 
-ci: lint pre-commit validate-rules test-unit ## Everything the CI checks, in this order
+ci: lint pre-commit validate-all test-unit ## Everything the CI checks, in this order
 
 ##@ Cleanup
 

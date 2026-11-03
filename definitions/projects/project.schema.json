@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "definitions/projects/project.schema.json",
+  "title": "maDMP project",
+  "description": "One project at one version (definitions/projects/<id>/<version>.yaml, the directory must be the declared id and the filename the declared version). Strict: every field required, none extra. Its metadata, then the rules it is built from.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "organizationId",
+    "name",
+    "version",
+    "author",
+    "license",
+    "rules"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,64}$",
+      "description": "The project's machine name, declared once, and the name of the directory this file sits in. Lowercase letters, digits and dashes."
+    },
+    "organizationId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+([.][a-z0-9]+)*$",
+      "description": "The organization the project belongs to. Lowercase letters and digits, in parts joined by single dots."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What a reader sees. Free-form, it is never derived from `id`."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$",
+      "description": "The project's version, X.Y.Z. Must equal the file's own name: definitions/projects/<id>/<version>.yaml."
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Who develops the project. Markdown, a link included."
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The licence of the project, as a reader sees it, e.g. 'CC BY 4.0'."
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The rules the project is built from, each pinned at one version: [{standard: version}, ...] -> definitions/rules/<standard>/<version>.json, in the order written. One key per entry, the standard in snake_case and the version X.Y.Z, quoted (unquoted 1.0 would be a YAML float, not a version).",
+      "items": {
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" },
+        "additionalProperties": {
+          "type": "string",
+          "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"
+        }
+      }
+    }
+  }
+}
