@@ -58,6 +58,15 @@ jobs:
       - name: Every project against its schema
         run: make validate-projects
 
+  validate-models:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - *install
+      - name: Every project's rules resolved and merged
+        run: make validate-models
+
   # A pull request is compared with where it left its base, a push to the
   # default branch with the commit it moved the branch from, anything else
   # with where it left origin/main.

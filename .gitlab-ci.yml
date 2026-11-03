@@ -69,6 +69,11 @@ validate-projects:
   script:
     - make validate-projects
 
+validate-models:
+  extends: .python
+  script:
+    - make validate-models
+
 # A merge request is compared with where it left its target, a push to the
 # default branch with the commit it moved the branch from, anything else with
 # where it left origin/main.

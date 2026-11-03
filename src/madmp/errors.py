@@ -51,3 +51,28 @@ class RulesFileError(SchemaFileError):
 
 class ProjectFileError(SchemaFileError):
     """A project file is malformed (schema or layout)."""
+
+
+class UnresolvedPinsError(ProblemsError):
+    """Pins that are malformed, or name a rules file that is not there.
+
+    No subject, the problems are about a set of pins.
+    """
+
+    noun = "unresolved pin"
+
+
+class RulesSetError(ProblemsError):
+    """The set of rules files is ill-formed: a standard declared twice, not
+    exactly one base, an extension of another standard or of another version
+    of the base, or, once merged, a field nobody describes."""
+
+
+class RulesConflictError(ProblemsError):
+    """Two rules files disagree on shared fields in ways the merge does not
+    allow.
+
+    No subject, the conflicts are about a set of files.
+    """
+
+    noun = "rules conflict"

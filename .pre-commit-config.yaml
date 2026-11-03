@@ -53,6 +53,13 @@ repos:
         files: ^(definitions/projects|src/madmp/definitions)/
         pass_filenames: false
 
+      - id: validate-models
+        name: what every project pins resolves and merges
+        entry: make validate-models
+        language: system
+        files: ^(definitions|src/madmp/(definitions|model))/
+        pass_filenames: false
+
       - id: test-unit
         name: unit tests
         entry: make test-unit

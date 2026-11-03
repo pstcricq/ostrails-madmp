@@ -8,6 +8,7 @@ Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common 
 
 1. **Rules.** A standard at one version is one JSON file: the base standard, the RDA DMP Common Standard, and the extensions that tighten it, such as the OSTrails profile. An extension may only tighten what the base defines.
 2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from. A published version never changes: a change is a new version.
+3. **Model.** The rules a project pins merge into one model, the base standard first.
 
 ## What is here
 
@@ -40,9 +41,9 @@ Each `madmp` command has a make target of the same name: `madmp validate rules` 
 
 | | |
 |---|---|
-| `make validate-all` | every rules file and project against its schema and its path, and no published version changed since `origin/main` (`BASE=<branch or commit>`) |
+| `make validate-all` | every rules file and project against its schema and its path, the rules each project pins merged, and no published version changed since `origin/main` (`BASE=<branch or commit>`) |
 
-`make validate-rules`, `validate-projects` and `validate-frozen` each run one step of `validate-all`.
+`make validate-rules`, `validate-projects`, `validate-models` and `validate-frozen` each run one step of `validate-all`.
 
 ## CI
 

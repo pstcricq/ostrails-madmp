@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-frozen ci clean
+.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-models validate-frozen ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -55,6 +55,9 @@ validate-rules: ## Check each rules file: meta-schema, path, coherence
 
 validate-projects: ## Check each project: schema and path
 	$(call run,$(RUN) madmp validate projects)
+
+validate-models: ## Resolve each project's pins and merge their rules
+	$(call run,$(RUN) madmp validate models)
 
 validate-frozen: ## Check no published version changed (BASE=origin/main)
 	$(call run,$(RUN) madmp validate frozen $(if $(BASE),--base $(BASE)))

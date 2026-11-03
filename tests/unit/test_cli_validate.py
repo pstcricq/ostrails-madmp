@@ -15,12 +15,15 @@ def test_validate_all_runs_every_step_and_says_each(monkeypatch, capsys):
     out = capsys.readouterr().out
     for kind in KINDS:
         assert re.search(rf"^{kind.name}: \d+ files? valid\.$", out, re.MULTILINE)
+    assert re.search(
+        r"^models: \d+ project versions? resolved and merged\.$", out, re.MULTILINE
+    )
     assert out.endswith(
         "frozen: nothing to compare with, no origin/main: set --base <branch>.\n"
     )
 
 
-@pytest.mark.parametrize("step", [kind.name for kind in KINDS])
+@pytest.mark.parametrize("step", [*(kind.name for kind in KINDS), "models"])
 def test_validate_runs_one_step(step, capsys):
     assert main(["validate", step]) == 0
     assert capsys.readouterr().out.count("\n\n") == 1
@@ -61,3 +64,30 @@ def test_every_file_is_listed(capsys):
     assert main(["validate", "rules"]) == 0
     out = capsys.readouterr().out
     assert out.count("ok   ") == len(files(RULES))
+
+
+def test_a_project_whose_model_cannot_load_is_skipped(monkeypatch, tmp_path, capsys):
+    (tmp_path / "broken").mkdir()
+    (tmp_path / "broken" / "1.0.0.yaml").write_text("id: broken\n")
+    monkeypatch.setattr(
+        "madmp.cli.validate.files", lambda kind, directory=None: files(kind, tmp_path)
+    )
+    assert main(["validate", "models"]) == 1
+    err = capsys.readouterr().err
+    assert "SKIP" in err and "broken/1.0.0.yaml" in err
+    assert "models: 1 of 1 project version not resolved and merged." in err
+
+
+def test_a_project_whose_pins_do_not_resolve_fails(monkeypatch, tmp_path, capsys):
+    (tmp_path / "test").mkdir()
+    (tmp_path / "test" / "1.0.0.yaml").write_text(
+        "id: test\norganizationId: example\nname: Test\nversion: '1.0.0'\n"
+        "author: Someone\nlicense: CC BY 4.0\nrules:\n  - nope: '1.0.0'\n"
+    )
+    monkeypatch.setattr(
+        "madmp.cli.validate.files", lambda kind, directory=None: files(kind, tmp_path)
+    )
+    assert main(["validate", "models"]) == 1
+    err = capsys.readouterr().err
+    assert "FAIL" in err and "- unknown standard 'nope'" in err
+    assert "models: 1 of 1 project version not resolved and merged." in err

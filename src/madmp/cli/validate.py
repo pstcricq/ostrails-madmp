@@ -1,5 +1,5 @@
-"""The ``madmp validate`` commands: ``rules``, ``projects``, ``frozen``, and
-``all`` for every one of them in this order.
+"""The ``madmp validate`` commands: ``rules``, ``projects``, ``models``,
+``frozen``, and ``all`` for every one of them in this order.
 """
 
 from __future__ import annotations
@@ -11,7 +11,19 @@ import sys
 from pathlib import Path
 
 from madmp.cli import output
-from madmp.definitions import KINDS, Kind, branch_point, changed_since, files, load
+from madmp.definitions import (
+    KINDS,
+    PROJECTS,
+    Kind,
+    ProjectFileError,
+    branch_point,
+    changed_since,
+    files,
+    load,
+)
+from madmp.errors import ProblemsError
+from madmp.model import model_for
+from madmp.paths import PROJECTS_DIR
 
 
 def _validate_kind(kind: Kind) -> int:
@@ -36,8 +48,47 @@ def _validate_kind(kind: Kind) -> int:
     )
 
 
+def _validate_models() -> int:
+    """Every project version's pins resolved and their rules merged. A project
+    that does not load is skipped."""
+    paths = files(PROJECTS)
+
+    def step(path: Path) -> bool:
+        try:
+            model = model_for(load(PROJECTS, path)["rules"])
+        except ProjectFileError:
+            output.fail(
+                output.shown(path),
+                "does not load, see `madmp validate projects`.",
+                skip=True,
+            )
+            return False
+        # Unresolved pins, an ill-formed or conflicting set.
+        except ProblemsError as err:
+            output.fail(output.shown(path), "\n".join(f"- {p}" for p in err.problems))
+            return False
+        merged = " + ".join(model.standards)
+        fields = sum(1 for _ in model.walk())
+        output.ok(f"{output.shown(path)} : {merged}, {fields} fields")
+        return True
+
+    failed = output.each(paths, "project version", PROJECTS_DIR, step, "models")
+    if failed is None:
+        return 1
+    return output.summary(
+        len(paths),
+        len(failed),
+        "project version",
+        "resolved and merged",
+        "not resolved and merged",
+        "models",
+    )
+
+
+# Every kind, then the models, which merge what the projects pin.
 _VALIDATE_STEPS = {
-    kind.name: (lambda kind=kind: _validate_kind(kind)) for kind in KINDS
+    **{kind.name: (lambda kind=kind: _validate_kind(kind)) for kind in KINDS},
+    "models": _validate_models,
 }
 
 

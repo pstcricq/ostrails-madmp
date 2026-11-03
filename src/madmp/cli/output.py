@@ -1,5 +1,5 @@
-"""What the madmp command prints: ``ok`` on standard output, ``FAIL`` on
-standard error, then one summary line."""
+"""What the madmp command prints: ``ok`` on standard output, ``FAIL`` and
+``SKIP`` on standard error, then one summary line."""
 
 from __future__ import annotations
 
@@ -21,9 +21,10 @@ def ok(text: str) -> None:
     print(f"ok   {text}")
 
 
-def fail(subject: str, problem: object) -> None:
+def fail(subject: str, problem: object, *, skip: bool = False) -> None:
+    head = "SKIP" if skip else "FAIL"
     details = str(problem).replace("\n", "\n     ")
-    print(f"FAIL {subject}\n     {details}", file=sys.stderr)
+    print(f"{head} {subject}\n     {details}", file=sys.stderr)
 
 
 def count(n: int, noun: str) -> str:
