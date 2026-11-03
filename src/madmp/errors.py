@@ -1,5 +1,5 @@
 """Every error this package raises: ``ProblemsError`` and its subclasses for
-what the definitions hold.
+what the definitions and the packages hold.
 """
 
 from __future__ import annotations
@@ -84,3 +84,9 @@ class DocumentError(ProblemsError):
 
     def __init__(self, problems: list[str], path: str | Path):
         super().__init__(problems, subject=path)
+
+
+class PackageError(ProblemsError):
+    """The two packages built for a project version do not hold: the KM emits
+    an entity twice, or the template's body is not Jinja, with the package id
+    as subject."""

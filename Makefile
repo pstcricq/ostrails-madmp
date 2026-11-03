@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance ci clean
+.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -23,6 +23,13 @@ BASE ?=
 # What `make assess-conformance` assesses, a DMP file or a directory of them,
 # no default.
 DMP ?=
+
+# What `make packages-generate` takes, a project's directory or one of its
+# versions; unset, every version of every project.
+PROJECT ?=
+
+# Where `make packages-generate` writes the packages it builds; unset, nowhere.
+OUT ?=
 
 help: ## Show this help
 	awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\n"} \
@@ -72,6 +79,11 @@ assess-conformance: ## Check DMP=<file or dir> against the rules it pins
 	$(if $(DMP),,$(error DMP is not set: make assess-conformance DMP=<file or directory>))
 	$(call run,$(RUN) madmp assess conformance $(DMP))
 
+##@ Packages (madmp packages)
+
+packages-generate: ## Build and check every KM and template (OUT=, PROJECT=)
+	$(call run,$(RUN) madmp packages generate $(if $(OUT),--out $(OUT)) $(PROJECT))
+
 ##@ Tests
 
 test-unit: ## Run the tests that need only the repository
@@ -79,7 +91,7 @@ test-unit: ## Run the tests that need only the repository
 
 ##@ CI
 
-ci: lint pre-commit validate-all test-unit ## Everything the CI checks, in this order
+ci: lint pre-commit validate-all packages-generate test-unit ## Everything the CI checks, in this order
 
 ##@ Cleanup
 

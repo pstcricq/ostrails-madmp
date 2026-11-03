@@ -94,6 +94,15 @@ jobs:
           fi
           make validate-frozen BASE="$base"
 
+  packages-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - *install
+      - name: Build every project version's KM and document template
+        run: make packages-generate
+
   test-unit:
     runs-on: ubuntu-latest
     steps:

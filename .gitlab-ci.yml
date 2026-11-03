@@ -92,6 +92,11 @@ validate-frozen:
       fi
       make validate-frozen BASE="$base"
 
+packages-generate:
+  extends: .python
+  script:
+    - make packages-generate
+
 # The tests of the frozen versions run git.
 test-unit:
   extends: .python-git
