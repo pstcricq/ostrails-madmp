@@ -2,6 +2,7 @@
 ``definitions/``, validated in the order of ``KINDS``.
 """
 
+from madmp.definitions.frozen import branch_point, changed_since
 from madmp.definitions.loader import Kind, files, load
 from madmp.definitions.projects import PROJECTS, ProjectFileError
 from madmp.definitions.rules import RULES, RulesFileError, field_children
@@ -15,6 +16,8 @@ __all__ = [
     "Kind",
     "ProjectFileError",
     "RulesFileError",
+    "branch_point",
+    "changed_since",
     "field_children",
     "files",
     "load",

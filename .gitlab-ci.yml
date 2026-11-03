@@ -69,7 +69,26 @@ validate-projects:
   script:
     - make validate-projects
 
+# A merge request is compared with where it left its target, a push to the
+# default branch with the commit it moved the branch from, anything else with
+# where it left origin/main.
+validate-frozen:
+  extends: .python-git
+  variables:
+    # The whole history, which the comparison reads.
+    GIT_DEPTH: 0
+  script:
+    - |
+      base=
+      if [ -n "$CI_MERGE_REQUEST_DIFF_BASE_SHA" ]; then
+        base=$CI_MERGE_REQUEST_DIFF_BASE_SHA
+      elif [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != 0000000000000000000000000000000000000000 ]; then
+        base=$CI_COMMIT_BEFORE_SHA
+      fi
+      make validate-frozen BASE="$base"
+
+# The tests of the frozen versions run git.
 test-unit:
-  extends: .python
+  extends: .python-git
   script:
     - make test-unit

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects ci clean
+.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-frozen ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -14,6 +14,11 @@ run = $(1); status=$$?; echo; exit $$status
 
 UV  := uv
 RUN := $(UV) run
+
+# What `make validate-all` and `validate-frozen` compare this checkout with, a
+# branch or a commit, given to madmp as --base; unset, madmp's own default
+# (origin/main).
+BASE ?=
 
 help: ## Show this help
 	awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\n"} \
@@ -43,13 +48,16 @@ pre-commit: ## Run every pre-commit hook on every file
 ##@ Validate (madmp validate)
 
 validate-all: ## Run every validate-* step, stopping at the first failure
-	$(call run,$(RUN) madmp validate all)
+	$(call run,$(RUN) madmp validate all $(if $(BASE),--base $(BASE)))
 
 validate-rules: ## Check each rules file: meta-schema, path, coherence
 	$(call run,$(RUN) madmp validate rules)
 
 validate-projects: ## Check each project: schema and path
 	$(call run,$(RUN) madmp validate projects)
+
+validate-frozen: ## Check no published version changed (BASE=origin/main)
+	$(call run,$(RUN) madmp validate frozen $(if $(BASE),--base $(BASE)))
 
 ##@ Tests
 

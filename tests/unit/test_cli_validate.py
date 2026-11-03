@@ -8,11 +8,16 @@ from madmp.cli import main
 from madmp.definitions import KINDS, RULES, files
 
 
-def test_validate_all_runs_every_step_and_says_each(capsys):
+def test_validate_all_runs_every_step_and_says_each(monkeypatch, capsys):
+    """Without a branch to compare with, frozen says so and passes."""
+    monkeypatch.setattr("madmp.cli.validate.branch_point", lambda base: None)
     assert main(["validate", "all"]) == 0
     out = capsys.readouterr().out
     for kind in KINDS:
         assert re.search(rf"^{kind.name}: \d+ files? valid\.$", out, re.MULTILINE)
+    assert out.endswith(
+        "frozen: nothing to compare with, no origin/main: set --base <branch>.\n"
+    )
 
 
 @pytest.mark.parametrize("step", [kind.name for kind in KINDS])

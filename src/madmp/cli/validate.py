@@ -1,14 +1,17 @@
-"""The ``madmp validate`` commands: ``rules``, ``projects``, and ``all``
-for every one of them in this order.
+"""The ``madmp validate`` commands: ``rules``, ``projects``, ``frozen``, and
+``all`` for every one of them in this order.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
+import subprocess
+import sys
 from pathlib import Path
 
 from madmp.cli import output
-from madmp.definitions import KINDS, Kind, files, load
+from madmp.definitions import KINDS, Kind, branch_point, changed_since, files, load
 
 
 def _validate_kind(kind: Kind) -> int:
@@ -38,14 +41,41 @@ _VALIDATE_STEPS = {
 }
 
 
+def _validate_frozen(base: str) -> int:
+    """Every version file of the point this checkout left ``base`` unchanged
+    in the checkout. With nothing to compare with, it says so and passes. A
+    commit is shown by its short hash."""
+    revision = branch_point(base)
+    if revision is None:
+        print(f"frozen: nothing to compare with, no {base}: set --base <branch>.")
+        return 0
+    shown = revision[:7] if re.fullmatch(r"[0-9a-f]{40}", revision) else revision
+    try:
+        changed = changed_since(revision, KINDS)
+    except subprocess.CalledProcessError as err:
+        output.fail(shown, f"git cannot read it: {err.stderr.decode().strip()}")
+        return 1
+    for name in changed:
+        output.fail(
+            name, f"changed or removed since {shown}, add a new version instead"
+        )
+    if changed:
+        published = output.count(len(changed), "published version")
+        print(f"\nfrozen: {published} changed.", file=sys.stderr)
+        return 1
+    print(f"frozen: no published version changed since {shown}.")
+    return 0
+
+
 def _validate(args: argparse.Namespace) -> int:
     """One step, or ``all`` in order, a blank line between two, stopping at
     the first that fails."""
-    names = list(_VALIDATE_STEPS) if args.step == "all" else [args.step]
+    steps = {**_VALIDATE_STEPS, "frozen": lambda: _validate_frozen(args.base)}
+    names = list(steps) if args.step == "all" else [args.step]
     for number, name in enumerate(names):
         if number:
             print()
-        if _VALIDATE_STEPS[name]():
+        if steps[name]():
             return 1
     return 0
 
@@ -55,7 +85,14 @@ def add_commands(commands: argparse._SubParsersAction) -> None:
     validate = commands.add_parser("validate", help="validate the definitions")
     validate.add_argument(
         "step",
-        choices=[*_VALIDATE_STEPS, "all"],
+        choices=[*_VALIDATE_STEPS, "frozen", "all"],
         help="one step, or all in this order",
+    )
+    validate.add_argument(
+        "--base",
+        metavar="BRANCH",
+        default="origin/main",
+        help="for frozen and all, the branch or the commit this checkout left "
+        "(origin/main)",
     )
     validate.set_defaults(run=_validate)
