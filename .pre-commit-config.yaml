@@ -1,0 +1,34 @@
+# Hooks git runs on the files of each commit.
+#
+# A hook that fixes a file (ruff, whitespace, end of file) stops the commit:
+# add the fixed file and commit again.
+
+# The licence text stays as published.
+exclude: ^LICENSE$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # ruff through uv, the version of uv.lock, on the files of the commit.
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]

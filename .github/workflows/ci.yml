@@ -1,0 +1,41 @@
+# One job per make target of the same name, in parallel. Every job installs
+# with `uv sync --locked`, which fails when uv.lock no longer matches
+# pyproject.toml, and UV_LOCKED keeps every `uv run` on uv.lock.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only, and every job inherits it.
+permissions:
+  contents: read
+
+env:
+  UV_LOCKED: "1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - &setup-uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: false
+      - &install
+        name: Install the locked environment
+        run: uv sync --locked
+      - name: Lint the Python
+        run: make lint
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - *install
+      - name: Every hook on every file
+        run: make pre-commit

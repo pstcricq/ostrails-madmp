@@ -1,0 +1,11 @@
+# The environment of `uv sync` and the caches inside it.
+.venv/
+
+# The bytecode Python writes beside the modules.
+__pycache__/
+
+# The folder settings macOS Finder writes.
+.DS_Store
+
+# Editor settings.
+.vscode/

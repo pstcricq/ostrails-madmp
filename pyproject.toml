@@ -1,0 +1,29 @@
+# The environment of the repository: `uv sync` installs it in .venv, the
+# versions of uv.lock with `uv sync --locked`, which fails when uv.lock no
+# longer matches this file.
+
+[project]
+name = "madmp"
+version = "1.0.0"
+description = "Machine-actionable DMPs: their rules, their projects, their assessment, their storage and their creation in DSW."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Pierre St-Cricq", email = "pierre64saint-cricq@hotmail.fr" },
+]
+
+# The oldest Python accepted; .python-version names the one uv installs.
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["ruff", "pre-commit"]
+
+# Any other uv refuses to run on this project.
+[tool.uv]
+required-version = "==0.12.5"
+
+# ruff's default rules, its cache inside .venv.
+[tool.ruff]
+cache-dir = ".venv/.ruff_cache"

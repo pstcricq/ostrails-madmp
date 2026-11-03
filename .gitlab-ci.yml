@@ -1,0 +1,60 @@
+# One job per make target of the same name, in parallel. Every job installs
+# with `uv sync --locked`, which fails when uv.lock no longer matches
+# pyproject.toml, and UV_LOCKED keeps every `uv run` on uv.lock.
+
+# One image for every job, uv installed from PyPI on top, the version
+# pyproject.toml requires.
+image: python:3.12-slim
+
+variables:
+  # Both caches sit inside the build directory, where the runner can keep them.
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+  UV_LOCKED: "1"
+  # No prompt from apt, no new-version notice from pip.
+  DEBIAN_FRONTEND: noninteractive
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+# On a merge request, and on a push to the default branch.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+stages:
+  - report
+
+# What every job does before its own step: make, which runs it, then the
+# environment.
+.python:
+  stage: report
+  cache:
+    key:
+      files:
+        - uv.lock
+    paths:
+      - .cache/pip
+      - .cache/uv
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends make
+    - &install-uv pip install --root-user-action=ignore uv==0.12.5
+    - &install uv sync --locked
+
+# The same, git besides make, for the jobs that read the repository through it.
+.python-git:
+  extends: .python
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends git make
+    - *install-uv
+    - *install
+
+lint:
+  extends: .python
+  script:
+    - make lint
+
+# pre-commit reads the repository through git.
+pre-commit:
+  extends: .python-git
+  script:
+    - make pre-commit
