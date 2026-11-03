@@ -1,6 +1,11 @@
-# The environment of the repository: `uv sync` installs it in .venv, the
-# versions of uv.lock with `uv sync --locked`, which fails when uv.lock no
-# longer matches this file.
+# The madmp package and the environment of the repository: `uv sync` installs
+# both in .venv, the versions of uv.lock with `uv sync --locked`, which fails
+# when uv.lock no longer matches this file.
+
+# uv's own backend builds madmp from src/madmp/, every file under it included.
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13"]
+build-backend = "uv_build"
 
 [project]
 name = "madmp"
@@ -15,14 +20,22 @@ authors = [
 
 # The oldest Python accepted; .python-version names the one uv installs.
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["jsonschema>=4"]
+
+# The madmp command, installed by `uv sync`.
+[project.scripts]
+madmp = "madmp.cli:main"
 
 [dependency-groups]
-dev = ["ruff", "pre-commit"]
+dev = ["pytest", "ruff", "pre-commit"]
 
 # Any other uv refuses to run on this project.
 [tool.uv]
 required-version = "==0.12.5"
+
+# pytest's cache inside .venv.
+[tool.pytest.ini_options]
+cache_dir = ".venv/.pytest_cache"
 
 # ruff's default rules, its cache inside .venv.
 [tool.ruff]

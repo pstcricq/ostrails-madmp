@@ -1,7 +1,11 @@
-# Hooks git runs on the files of each commit.
+# Hooks git runs on the files of each commit, and the unit tests before each
+# push.
 #
 # A hook that fixes a file (ruff, whitespace, end of file) stops the commit:
 # add the fixed file and commit again.
+default_install_hook_types: [pre-commit, pre-push]
+# A hook runs before each commit unless it names its own stages.
+default_stages: [pre-commit]
 
 # The licence text stays as published.
 exclude: ^LICENSE$
@@ -12,13 +16,15 @@ repos:
     hooks:
       - id: check-merge-conflict
       - id: check-yaml
+      - id: check-json
       - id: check-toml
       - id: check-added-large-files
       - id: detect-private-key
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
-  # ruff through uv, the version of uv.lock, on the files of the commit.
+  # ruff through uv, the version of uv.lock, on the files of the commit. The
+  # validations and the tests through their make target, on every file.
   - repo: local
     hooks:
       - id: ruff-check
@@ -32,3 +38,18 @@ repos:
         entry: uv run ruff format
         language: system
         types: [python]
+
+      - id: validate-rules
+        name: rules against the meta-schema
+        entry: make validate-rules
+        language: system
+        files: ^(definitions/rules|src/madmp/definitions)/
+        pass_filenames: false
+
+      - id: test-unit
+        name: unit tests
+        entry: make test-unit
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

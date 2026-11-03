@@ -39,3 +39,21 @@ jobs:
       - *install
       - name: Every hook on every file
         run: make pre-commit
+
+  validate-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - *install
+      - name: Every rules file against the meta-schema
+        run: make validate-rules
+
+  test-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - *install
+      - name: The unit tests
+        run: make test-unit

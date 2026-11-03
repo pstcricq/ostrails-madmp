@@ -1,0 +1,1 @@
+"""madmp: declarative maDMP rules."""

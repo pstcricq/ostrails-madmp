@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit ci clean
+.PHONY: help install lint format pre-commit test-unit validate-rules ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -8,6 +8,9 @@ $(info )
 # Run a command followed by a blank line and keep its exit code.
 # Its argument holds no comma: $(call) splits its arguments on commas.
 run = $(1); status=$$?; echo; exit $$status
+
+# A section per group of the madmp command, named after it: `uv run madmp
+# --help` lists the commands.
 
 UV  := uv
 RUN := $(UV) run
@@ -37,9 +40,19 @@ format: ## Format and auto-fix the Python
 pre-commit: ## Run every pre-commit hook on every file
 	$(call run,$(RUN) pre-commit run --all-files --show-diff-on-failure)
 
+##@ Validate (madmp validate)
+
+validate-rules: ## Check each rules file: meta-schema, path, coherence
+	$(call run,$(RUN) madmp validate rules)
+
+##@ Tests
+
+test-unit: ## Run the tests that need only the repository
+	$(call run,$(RUN) pytest tests/unit -q)
+
 ##@ CI
 
-ci: lint pre-commit ## Everything the CI checks, in this order
+ci: lint pre-commit validate-rules test-unit ## Everything the CI checks, in this order
 
 ##@ Cleanup
 

@@ -1,0 +1,118 @@
+{
+  "standard": "ostrails",
+  "version": "1.0.0",
+  "extends": { "standard": "rda_dcs", "versions": ["1.0.0"] },
+  "name": "OSTrails Application Profile",
+  "references": [
+    {
+      "label": "OSTrails Application Profile for maDMPs",
+      "url": "https://docs.ostrails.eu/en/latest/commons/dmp/application-profile.html"
+    }
+  ],
+  "description": "Mandatory-field, type/format, and controlled-vocabulary checks derived from the extension table of the OSTrails Application Profile for maDMPs (https://ostrails.eu). The AP is a formal extension of the RDA DCS: it only adds fields and constraints on top of entities already defined there (dmp, project, dataset, distribution, cost), it never redefines their cardinality. Structural parent nodes (dataset, distribution, project, cost) are redeclared here with the same cardinality and type as in the RDA DCS, so the tree can be traversed down to the new leaf fields. Of the OSTrails extension fields, only dmp.data_access carries a vocabulary in the source table, so '_allowed_values'/'_suggested_values' appear there only.\nFields are ordered depth-first: dmp's own fields alphabetically, each nested object immediately followed by its own children, also alphabetically.",
+  "dmp": {
+    "cost": {
+      "_cardinality": "0..n",
+      "_type": "object",
+      "type": {
+        "_cardinality": "0..1",
+        "_type": "string",
+        "_description": "The category of cost this item represents (e.g. storage, staff time, equipment)."
+      },
+      "unit": {
+        "_cardinality": "0..1",
+        "_type": "string",
+        "_description": "The unit the estimated amount is expressed in (e.g. per year, per TB)."
+      }
+    },
+    "data_access": {
+      "_cardinality": "0..1",
+      "_type": "string",
+      "_allowed_values": ["open", "closed", "shared"],
+      "_description": "The overall access level for this DMP's data (open, closed, or shared)."
+    },
+    "dataset": {
+      "_cardinality": "1..n",
+      "_type": "object",
+      "distribution": {
+        "_cardinality": "0..n",
+        "_type": "object",
+        "access_methods": {
+          "_cardinality": "0..1",
+          "_type": "string",
+          "_description": "How this distribution can be accessed (e.g. API, download, request form)."
+        },
+        "conforms_to": {
+          "_cardinality": "0..n",
+          "_type": "string",
+          "_description": "A standard or specification this distribution conforms to."
+        },
+        "format_justification": {
+          "_cardinality": "0..1",
+          "_type": "string",
+          "_description": "Why this distribution's format was chosen."
+        },
+        "restriction_explanation": {
+          "_cardinality": "0..1",
+          "_type": "string",
+          "_description": "Why access to this distribution is restricted, if it is."
+        }
+      },
+      "documentation": {
+        "_cardinality": "0..1",
+        "_type": "string",
+        "_description": "Where and how this dataset is documented."
+      },
+      "methodology": {
+        "_cardinality": "0..1",
+        "_type": "string",
+        "_description": "The methodology used to produce this dataset."
+      },
+      "naming_convention": {
+        "_cardinality": "0..1",
+        "_type": "string",
+        "_description": "The naming convention used for this dataset's files."
+      },
+      "target_audience": {
+        "_cardinality": "0..1",
+        "_type": "string",
+        "_description": "The intended audience for this dataset."
+      }
+    },
+    "license": {
+      "_cardinality": "0..1",
+      "_type": "object",
+      "_chapter_description": "The license this DMP's data is released under, and the date it takes effect.",
+      "_description": "The license this DMP's data is released under.",
+      "license_ref": {
+        "_cardinality": "1",
+        "_type": "url",
+        "_description": "A URL pointing to the full text of the license."
+      },
+      "start_date": {
+        "_cardinality": "1",
+        "_type": "date",
+        "_description": "The date this license takes effect."
+      }
+    },
+    "project": {
+      "_cardinality": "0..n",
+      "_type": "object",
+      "acronym": {
+        "_cardinality": "0..1",
+        "_type": "string",
+        "_description": "A short acronym for the project."
+      }
+    },
+    "rights": {
+      "_cardinality": "0..1",
+      "_type": "string",
+      "_description": "A statement of the rights held over this DMP's data."
+    },
+    "version": {
+      "_cardinality": "0..1",
+      "_type": "string",
+      "_description": "The version of this DMP."
+    }
+  }
+}

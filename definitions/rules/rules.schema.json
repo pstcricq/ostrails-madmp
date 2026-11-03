@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "definitions/rules/rules.schema.json",
+  "title": "maDMP rules file",
+  "description": "The format of one definitions/rules/<standard>/<version>.json file: a 'standard' declaration plus a recursive tree of DMP fields. Two orthogonal facts per field: '_cardinality' says how many values ('1' and '0..1' single, '1..n' and '0..n' list), '_type' says what each value is ('object' for structured entities, otherwise a scalar format). There is no 'list' type, list-ness is expressed by the cardinality alone. Six further coherence rules are not expressed here: only '_type: object' fields may declare child fields, every '_type: object' field must declare at least one, '_allowed_values'/'_suggested_values' may only appear on scalar fields, the two may never appear together on one field, '_chapter_description' may only appear on a top-level object field, and in the base standard (no 'extends') every field carries a '_description', the question a researcher reads. An extension may redeclare a parent without one, to reach its own fields.",
+  "type": "object",
+  "required": ["standard", "version", "name", "references", "dmp"],
+  "additionalProperties": false,
+  "properties": {
+    "standard": {
+      "$ref": "#/$defs/standard_id",
+      "description": "Identifier of the standard this file defines, snake_case (e.g. 'rda_dcs'), and the name of the directory this file sits in."
+    },
+    "version": {
+      "$ref": "#/$defs/version",
+      "description": "Version of this standard, X.Y.Z. Must equal the file's own name: definitions/rules/<standard>/<version>.json."
+    },
+    "extends": {
+      "type": "object",
+      "description": "Present in an extension, absent from the base standard: the base it extends, and every version of it the extension was written for.",
+      "additionalProperties": false,
+      "required": ["standard", "versions"],
+      "properties": {
+        "standard": { "$ref": "#/$defs/standard_id" },
+        "versions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/version" }
+        }
+      }
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The standard's name as a reader sees it, e.g. 'RDA DMP Common Standard v1.2 (maDMP)'."
+    },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Where the standard is documented, one link each.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "url"],
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "pattern": "^https?://" }
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "description": "Free-form notes about this file's scope and conventions."
+    },
+    "dmp": {
+      "type": "object",
+      "description": "The root of the field tree, every key is a top-level DMP field. At least one.",
+      "minProperties": 1,
+      "patternProperties": { "^[a-z][a-z0-9_]*$": { "$ref": "#/$defs/field" } },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "standard_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "A standard's identifier, snake_case."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$",
+      "description": "A version, X.Y.Z."
+    },
+    "field": {
+      "type": "object",
+      "required": ["_cardinality", "_type"],
+      "properties": {
+        "_cardinality": {
+          "enum": ["1", "0..1", "1..n", "0..n"],
+          "description": "How many values: '1' exactly one, '0..1' at most one, '1..n' at least one, '0..n' any number. 'n' means the field holds a JSON array."
+        },
+        "_type": {
+          "enum": [
+            "object",
+            "string",
+            "number",
+            "boolean",
+            "date",
+            "datetime",
+            "email",
+            "url",
+            "currency",
+            "country_code",
+            "language"
+          ],
+          "description": "What each value is: 'object' for a structured entity with child fields, at least one, otherwise the scalar's expected format."
+        },
+        "_description": {
+          "type": "string",
+          "pattern": "\\S",
+          "description": "Human-facing description of the field, the question a researcher reads. Never empty."
+        },
+        "_chapter_description": {
+          "type": "string",
+          "pattern": "\\S",
+          "description": "Description of the chapter a top-level object field opens, the only place it is valid."
+        },
+        "_allowed_values": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Closed vocabulary: a value outside this list is a violation of the standard. Never together with '_suggested_values' on the same field."
+        },
+        "_suggested_values": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Recommended vocabulary: a value outside this list is only worth a warning. Never together with '_allowed_values' on the same field."
+        }
+      },
+      "patternProperties": { "^[a-z][a-z0-9_]*$": { "$ref": "#/$defs/field" } },
+      "additionalProperties": false
+    }
+  }
+}

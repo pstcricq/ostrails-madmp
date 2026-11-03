@@ -58,3 +58,13 @@ pre-commit:
   extends: .python-git
   script:
     - make pre-commit
+
+validate-rules:
+  extends: .python
+  script:
+    - make validate-rules
+
+test-unit:
+  extends: .python
+  script:
+    - make test-unit
