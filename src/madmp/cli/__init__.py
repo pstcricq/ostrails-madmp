@@ -6,16 +6,16 @@ from __future__ import annotations
 
 import argparse
 
-from madmp.cli import assess, packages, validate
+from madmp.cli import assess, packages, store, validate
 
-GROUPS = (validate, assess, packages)
+GROUPS = (validate, assess, packages, store)
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="madmp",
-        description="maDMP definitions, the assessment of DMPs and the DS Wizard "
-        "packages.",
+        description="maDMP definitions, the assessment of DMPs, the DS Wizard "
+        "packages and the DMP database.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
     for group in GROUPS:

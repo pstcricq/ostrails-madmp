@@ -26,6 +26,10 @@ dependencies = ["jsonschema>=4", "pyyaml", "jinja2"]
 [project.scripts]
 madmp = "madmp.cli:main"
 
+# store: the driver of the DMP database.
+[project.optional-dependencies]
+store = ["psycopg[binary]>=3.2"]
+
 [dependency-groups]
 dev = ["pytest", "ruff", "pre-commit"]
 

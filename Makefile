@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -31,6 +31,11 @@ PROJECT ?=
 # Where `make packages-generate` writes the packages it builds; unset, nowhere.
 OUT ?=
 
+# The values the targets below that need some read: a file of .env.example's
+# lines, filled in; unset, the environment.
+ENV_FILE ?=
+RUN_ENV := $(RUN) $(if $(ENV_FILE),--env-file $(ENV_FILE))
+
 help: ## Show this help
 	awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\n"} \
 		/^[a-zA-Z0-9_-]+:.*##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 } \
@@ -40,7 +45,7 @@ help: ## Show this help
 ##@ Environment
 
 install: ## Install the locked environment and the git hooks
-	$(call run,$(UV) sync)
+	$(call run,$(UV) sync --extra store)
 	$(call run,$(RUN) pre-commit install)
 
 ##@ Quality
@@ -84,14 +89,24 @@ assess-conformance: ## Check DMP=<file or dir> against the rules it pins
 packages-generate: ## Build and check every KM and template (OUT=, PROJECT=)
 	$(call run,$(RUN) madmp packages generate $(if $(OUT),--out $(OUT)) $(PROJECT))
 
+##@ Store (madmp store, ENV_FILE=<file>, else the environment)
+
+store-migrate: ## Bring the tables to this version's schema
+	$(call run,$(RUN_ENV) madmp store migrate)
+
 ##@ Tests
+
+test-all: test-unit test-integration ## Run every test: unit, then integration
 
 test-unit: ## Run the tests that need only the repository
 	$(call run,$(RUN) pytest tests/unit -q)
 
+test-integration: ## Run the tests that need a PostgreSQL (docker)
+	$(call run,$(RUN) pytest tests/integration -q)
+
 ##@ CI
 
-ci: lint pre-commit validate-all packages-generate test-unit ## Everything the CI checks, in this order
+ci: lint pre-commit validate-all packages-generate test-all ## Everything the CI checks, in this order
 
 ##@ Cleanup
 

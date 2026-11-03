@@ -1,5 +1,6 @@
 """Every error this package raises: ``ProblemsError`` and its subclasses for
-what the definitions and the packages hold.
+what the definitions and the packages hold, ``StoreError`` for the DMP
+database.
 """
 
 from __future__ import annotations
@@ -90,3 +91,8 @@ class PackageError(ProblemsError):
     """The two packages built for a project version do not hold: the KM emits
     an entity twice, or the template's body is not Jinja, with the package id
     as subject."""
+
+
+class StoreError(RuntimeError):
+    """The DMP database is not what this package can work with: unnamed by the
+    environment, or migrated by a newer version."""

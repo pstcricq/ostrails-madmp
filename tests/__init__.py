@@ -1,5 +1,6 @@
-"""The tests: unit/ needs nothing but the repository, fixtures/ holds the
-DMP documents they read."""
+"""The tests: unit/ needs nothing but the repository, integration/ a
+PostgreSQL started with docker, fixtures/ holds the DMP documents they
+read."""
 
 from pathlib import Path
 

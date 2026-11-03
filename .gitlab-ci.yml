@@ -97,8 +97,33 @@ packages-generate:
   script:
     - make packages-generate
 
-# The tests of the frozen versions run git.
+# The tests of the frozen versions run git; the store extra, psycopg, which
+# the unit tests of madmp store import.
 test-unit:
   extends: .python-git
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends git make
+    - *install-uv
+    - &install-store uv sync --locked --extra store
   script:
     - make test-unit
+
+# The integration tests start their postgres containers with the docker client
+# against a dind daemon on a runner tagged `docker`, where the containers
+# publish their ports.
+test-integration:
+  extends: .python
+  tags:
+    - docker
+  services:
+    - docker:28-dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    # Empty: dind serves plain TCP on 2375.
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends docker-cli make
+    - *install-uv
+    - *install-store
+  script:
+    - make test-integration

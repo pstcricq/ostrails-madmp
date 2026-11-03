@@ -12,6 +12,7 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from. A published version never changes: a change is a new version.
 3. **Packages.** The pinned rules merge into one model, from which `madmp` builds a DS Wizard Knowledge Model, the questions, and a document template that renders the answers as a maDMP JSON document.
 4. **Assessment.** A DMP is assessed against the rules its metadata names.
+5. **DMP database.** A PostgreSQL database of its own, its tables created by `madmp store migrate`.
 
 ## What is here
 
@@ -19,13 +20,15 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 |---|---|
 | [`definitions/rules/`](definitions/rules) | the rules, one JSON file per standard per version, `<standard>/<version>.json`, and `rules.schema.json` |
 | [`definitions/projects/`](definitions/projects) | the projects, one YAML file per project per version, `<id>/<version>.yaml`, and `project.schema.json` |
-| [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages |
-| [`tests/`](tests) | the unit tests, and the DMPs they assess (`tests/fixtures/`) |
+| [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages, DMP database |
+| [`.env.example`](.env.example) | every value the repository reads, with its local value |
+| [`tests/`](tests) | the unit and integration tests, and the DMPs they assess (`tests/fixtures/`) |
 
 ## Requirements
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) 0.12.5
 - make
+- Docker, for the integration tests
 
 ## Quick start
 
@@ -39,7 +42,7 @@ make packages-generate OUT=dsw-packages
 
 ## Commands
 
-Each `madmp` command has a make target of the same name: `madmp validate rules` is `make validate-rules`.
+Each `madmp` command has a make target of the same name: `madmp store migrate` is `make store-migrate`. The targets that reach a server read their values from `ENV_FILE=<file>`, the lines of `.env.example` filled in, else from the environment; a missing value is named, and nothing is done.
 
 ### Definitions
 
@@ -51,18 +54,30 @@ Each `madmp` command has a make target of the same name: `madmp validate rules` 
 
 `make validate-rules`, `validate-projects`, `validate-models` and `validate-frozen` each run one step of `validate-all`.
 
+### DMP database
+
+| | |
+|---|---|
+| `make store-migrate` | the tables of the DMP database, up to date |
+
+The database and its account exist beforehand. One on this machine, at the local values of `.env.example`:
+
+```bash
+docker run -d --name dmp-db -p 127.0.0.1:5432:5432 -e POSTGRES_DB=dmp -e POSTGRES_USER=dmp_app -e POSTGRES_PASSWORD=<DMP_PASSWORD> postgres:17.5
+```
+
 ## CI
 
-The same pipeline runs on GitHub Actions and on GitLab CI, one job per make target of the same name: lint, hooks, validation, packages and unit tests. `make ci` runs every check of the CI on this machine.
+The same pipeline runs on GitHub Actions and on GitLab CI, one job per make target of the same name: lint, hooks, validation, packages, unit and integration tests. `make ci` runs every check of the CI on this machine.
 
 ## Test
 
 ```bash
-make test-unit
+make test-all
 make lint
 ```
 
-`make test-unit` needs nothing but the repository. `make lint` checks the Python, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
+`make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database. `make lint` checks the Python, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
 
 ## Licence
 

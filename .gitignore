@@ -7,5 +7,9 @@ __pycache__/
 # The folder settings macOS Finder writes.
 .DS_Store
 
+# Every .env, values filled in from .env.example.
+.env
+*.env
+
 # Editor settings.
 .vscode/

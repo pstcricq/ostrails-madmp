@@ -108,6 +108,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - *setup-uv
-      - *install
+      - &install-store
+        name: Install the locked environment
+        run: uv sync --locked --extra store
       - name: The unit tests
         run: make test-unit
+
+  # The integration tests start their postgres containers with the runner's
+  # docker.
+  test-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - *install-store
+      - name: The integration tests
+        run: make test-integration
