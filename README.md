@@ -12,7 +12,7 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from. A published version never changes: a change is a new version.
 3. **Packages.** The pinned rules merge into one model, from which `madmp` builds a DS Wizard Knowledge Model, the questions, and a document template that renders the answers as a maDMP JSON document.
 4. **Assessment.** A DMP is assessed against the rules its metadata names.
-5. **DMP database.** A PostgreSQL database of its own, its tables created by `madmp store migrate`.
+5. **DMP database.** A PostgreSQL database of its own, its tables created by `madmp store migrate`, the definitions copied in by `madmp store sync`.
 
 ## What is here
 
@@ -59,6 +59,7 @@ Each `madmp` command has a make target of the same name: `madmp store migrate` i
 | | |
 |---|---|
 | `make store-migrate` | the tables of the DMP database, up to date |
+| `make store-sync` | the definitions copied into it |
 
 The database and its account exist beforehand. One on this machine, at the local values of `.env.example`:
 

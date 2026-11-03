@@ -1,5 +1,5 @@
 """The ``madmp store`` commands, on the DMP database the environment names:
-``migrate``.
+``migrate`` and ``sync``.
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ import sys
 from collections.abc import Callable
 
 from madmp.cli import output
+from madmp.errors import ProblemsError
 
 
 def _store(command: Callable[..., list[str]], what: str, done_how: str) -> int:
@@ -27,7 +28,8 @@ def _store(command: Callable[..., list[str]], what: str, done_how: str) -> int:
         database = Database.from_environment()
         with database.connect() as conn:
             done = command(conn)
-    except (StoreError, psycopg.Error) as err:
+    # A definition that does not load is a ProblemsError.
+    except (StoreError, ProblemsError, psycopg.Error) as err:
         print(f"FAIL {err}", file=sys.stderr)
         return 1
     for line in done:
@@ -43,6 +45,13 @@ def _store_migrate(args: argparse.Namespace) -> int:
     return _store(migrate, "migration", "applied")
 
 
+def _store_sync(args: argparse.Namespace) -> int:
+    """Copy the definitions the DMP database does not hold yet."""
+    from madmp.store import sync
+
+    return _store(sync, "definition", "added")
+
+
 def add_commands(commands: argparse._SubParsersAction) -> None:
     """Add ``madmp store`` to the madmp command."""
     store = commands.add_parser("store", help="the DMP database")
@@ -51,3 +60,7 @@ def add_commands(commands: argparse._SubParsersAction) -> None:
         "migrate", help="bring its tables to this version's schema"
     )
     store_migrate.set_defaults(run=_store_migrate)
+    store_sync = store_commands.add_parser(
+        "sync", help="copy the rules and the projects into it"
+    )
+    store_sync.set_defaults(run=_store_sync)

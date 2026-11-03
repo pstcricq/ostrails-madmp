@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -93,6 +93,9 @@ packages-generate: ## Build and check every KM and template (OUT=, PROJECT=)
 
 store-migrate: ## Bring the tables to this version's schema
 	$(call run,$(RUN_ENV) madmp store migrate)
+
+store-sync: ## Copy the rules and the projects into the database
+	$(call run,$(RUN_ENV) madmp store sync)
 
 ##@ Tests
 

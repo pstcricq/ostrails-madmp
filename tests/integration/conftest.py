@@ -1,7 +1,7 @@
 """A PostgreSQL for the tests of this directory: a postgres container of
 DMP_POSTGRES_VERSION, started once per session, on the docker daemon of
 DOCKER_HOST; without docker the tests are skipped, under CI they fail. ``conn``
-and ``database`` give each test an empty database, migrated.
+and ``database`` give each test an empty database, migrated and synced.
 """
 
 import os
@@ -18,7 +18,7 @@ import psycopg
 import pytest
 from psycopg.conninfo import conninfo_to_dict
 
-from madmp.store import Database, migrate
+from madmp.store import Database, migrate, sync
 from tests import ROOT
 
 IMAGE = (
@@ -103,11 +103,13 @@ def server():
 
 @pytest.fixture()
 def conn(server):
-    """A connection to an empty, migrated database."""
+    """A connection to an empty, migrated database, holding the definitions of
+    the repository."""
     with psycopg.connect(server, autocommit=True) as conn:
         conn.execute("DROP SCHEMA public CASCADE")
         conn.execute("CREATE SCHEMA public")
         migrate(conn)
+        sync(conn)
         yield conn
 
 
