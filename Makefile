@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -30,6 +30,9 @@ PROJECT ?=
 
 # Where `make packages-generate` writes the packages it builds; unset, nowhere.
 OUT ?=
+
+# The image `make image-build` builds, its name and tag.
+IMAGE ?= madmp:local
 
 # The values the targets below that need some read: a file of .env.example's
 # lines, filled in; unset, the environment.
@@ -114,6 +117,11 @@ dsw-submission: ## Set DSW's submission service for the templates it holds
 	$(call run,$(RUN_ENV) madmp dsw submission)
 
 dsw-sync: dsw-admin dsw-publish dsw-submission ## Run dsw-admin, dsw-publish, then dsw-submission
+
+##@ Image (docker)
+
+image-build: ## Build the madmp image from this checkout (IMAGE=madmp:local)
+	$(call run,docker build -t $(IMAGE) .)
 
 ##@ Tests
 

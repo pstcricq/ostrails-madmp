@@ -115,7 +115,7 @@ jobs:
         run: make test-unit
 
   # The integration tests start their postgres containers with the runner's
-  # docker.
+  # docker, and build the madmp image there.
   test-integration:
     runs-on: ubuntu-latest
     steps:

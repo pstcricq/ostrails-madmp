@@ -21,6 +21,7 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 | [`definitions/rules/`](definitions/rules) | the rules, one JSON file per standard per version, `<standard>/<version>.json`, and `rules.schema.json` |
 | [`definitions/projects/`](definitions/projects) | the projects, one YAML file per project per version, `<id>/<version>.yaml`, and `project.schema.json` |
 | [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages, DMP database, DMP API, DS Wizard instance |
+| [`Dockerfile`](Dockerfile) | the madmp image, which serves the DMP API and runs any `madmp` command |
 | [`.env.example`](.env.example) | every value the repository reads, with its local value |
 | [`tests/`](tests) | the unit and integration tests, and the DMPs they assess (`tests/fixtures/`) |
 
@@ -28,7 +29,7 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) 0.12.5
 - make
-- Docker, for the integration tests
+- Docker, for the integration tests and the image
 
 ## Quick start
 
@@ -90,6 +91,18 @@ Any DS Wizard instance, at `DSW_API_URL`.
 | `make dsw-submission` | the submission service `madmp`, which sends a submitted document to `SUBMISSION_URL` |
 | `make dsw-sync` | the three above, in this order |
 
+## Image
+
+```bash
+make image-build
+```
+
+The image `madmp:local` (`IMAGE=<name>:<tag>`) serves the DMP API on port 8081 by default, and runs any `madmp` command given instead:
+
+```bash
+docker run --rm madmp:local madmp --help
+```
+
 ## CI
 
 The same pipeline runs on GitHub Actions and on GitLab CI, one job per make target of the same name: lint, hooks, validation, packages, unit and integration tests. `make ci` runs every check of the CI on this machine.
@@ -101,7 +114,7 @@ make test-all
 make lint
 ```
 
-`make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database, the API, and the document each project version's template renders. `make lint` checks the Python, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
+`make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database, the API, the image, and the document each project version's template renders. `make lint` checks the Python, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
 
 ## Licence
 

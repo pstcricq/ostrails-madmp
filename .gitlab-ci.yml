@@ -108,9 +108,9 @@ test-unit:
   script:
     - make test-unit
 
-# The integration tests start their postgres containers with the docker client
-# against a dind daemon on a runner tagged `docker`, where the containers
-# publish their ports.
+# The integration tests start their postgres containers and build the madmp
+# image with the docker client against a dind daemon on a runner tagged
+# `docker`, where the containers publish their ports.
 test-integration:
   extends: .python
   tags:

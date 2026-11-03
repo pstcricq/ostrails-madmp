@@ -1,0 +1,11 @@
+# The build context is the repository, of which the image reads these files
+# only: everything is left out, then each one let in.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!LICENSE
+!src
+!definitions
+**/__pycache__
+**/.DS_Store
