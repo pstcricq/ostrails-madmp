@@ -1,0 +1,46 @@
+{
+  "dmp": {
+    "title": "title",
+    "description": "description",
+    "language": "eng",
+    "created": "2026-01-01T00:00:00Z",
+    "modified": "2026-01-01T00:00:00Z",
+    "ethical_issues_exist": "no",
+    "dmp_id": {
+      "identifier": "https://example.com/dmp",
+      "type": "url"
+    },
+    "contact": {
+      "name": "name",
+      "mbox": "name@example.com",
+      "contact_id": [
+        {
+          "identifier": "0000-0000-0000-0000",
+          "type": "orcid"
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "title": "title",
+        "description": "description",
+        "personal_data": "no",
+        "sensitive_data": "no",
+        "dataset_id": {
+          "identifier": "https://example.com/dataset",
+          "type": "url"
+        },
+        "distribution": [
+          {
+            "title": "title",
+            "data_access": "open",
+            "format": ["text/csv"]
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "rules": [{ "rda_dcs": "1.0.0" }]
+  }
+}

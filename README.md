@@ -9,6 +9,7 @@ Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common 
 1. **Rules.** A standard at one version is one JSON file: the base standard, the RDA DMP Common Standard, and the extensions that tighten it, such as the OSTrails profile. An extension may only tighten what the base defines.
 2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from. A published version never changes: a change is a new version.
 3. **Model.** The rules a project pins merge into one model, the base standard first.
+4. **Assessment.** A DMP is assessed against the rules its metadata names.
 
 ## What is here
 
@@ -16,8 +17,8 @@ Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common 
 |---|---|
 | [`definitions/rules/`](definitions/rules) | the rules, one JSON file per standard per version, `<standard>/<version>.json`, and `rules.schema.json` |
 | [`definitions/projects/`](definitions/projects) | the projects, one YAML file per project per version, `<id>/<version>.yaml`, and `project.schema.json` |
-| [`src/madmp/`](src/madmp) | the `madmp` command: validation |
-| [`tests/`](tests) | the unit tests |
+| [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment |
+| [`tests/`](tests) | the unit tests, and the DMPs they assess (`tests/fixtures/`) |
 
 ## Requirements
 
@@ -42,6 +43,7 @@ Each `madmp` command has a make target of the same name: `madmp validate rules` 
 | | |
 |---|---|
 | `make validate-all` | every rules file and project against its schema and its path, the rules each project pins merged, and no published version changed since `origin/main` (`BASE=<branch or commit>`) |
+| `make assess-conformance DMP=<file or directory>` | each DMP against the rules its `metadata.rules` pins |
 
 `make validate-rules`, `validate-projects`, `validate-models` and `validate-frozen` each run one step of `validate-all`.
 

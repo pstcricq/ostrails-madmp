@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-models validate-frozen ci clean
+.PHONY: help install lint format pre-commit test-unit validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -19,6 +19,10 @@ RUN := $(UV) run
 # branch or a commit, given to madmp as --base; unset, madmp's own default
 # (origin/main).
 BASE ?=
+
+# What `make assess-conformance` assesses, a DMP file or a directory of them,
+# no default.
+DMP ?=
 
 help: ## Show this help
 	awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\n"} \
@@ -61,6 +65,12 @@ validate-models: ## Resolve each project's pins and merge their rules
 
 validate-frozen: ## Check no published version changed (BASE=origin/main)
 	$(call run,$(RUN) madmp validate frozen $(if $(BASE),--base $(BASE)))
+
+##@ Assess (madmp assess)
+
+assess-conformance: ## Check DMP=<file or dir> against the rules it pins
+	$(if $(DMP),,$(error DMP is not set: make assess-conformance DMP=<file or directory>))
+	$(call run,$(RUN) madmp assess conformance $(DMP))
 
 ##@ Tests
 

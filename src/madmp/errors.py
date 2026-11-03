@@ -76,3 +76,11 @@ class RulesConflictError(ProblemsError):
     """
 
     noun = "rules conflict"
+
+
+class DocumentError(ProblemsError):
+    """A DMP file that cannot be assessed: unreadable, not JSON, or naming no
+    rules, with the path as subject."""
+
+    def __init__(self, problems: list[str], path: str | Path):
+        super().__init__(problems, subject=path)

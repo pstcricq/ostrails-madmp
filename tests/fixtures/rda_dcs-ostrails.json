@@ -1,0 +1,54 @@
+{
+  "dmp": {
+    "title": "title",
+    "description": "description",
+    "version": "1.0.0",
+    "language": "eng",
+    "created": "2026-01-01T00:00:00Z",
+    "modified": "2026-01-01T00:00:00Z",
+    "ethical_issues_exist": "no",
+    "data_access": "open",
+    "dmp_id": {
+      "identifier": "https://example.com/dmp",
+      "type": "url"
+    },
+    "contact": {
+      "name": "name",
+      "mbox": "name@example.com",
+      "contact_id": [
+        {
+          "identifier": "0000-0000-0000-0000",
+          "type": "orcid"
+        }
+      ]
+    },
+    "license": {
+      "license_ref": "https://example.com/license",
+      "start_date": "2026-01-01"
+    },
+    "dataset": [
+      {
+        "title": "title",
+        "description": "description",
+        "methodology": "methodology",
+        "personal_data": "no",
+        "sensitive_data": "no",
+        "dataset_id": {
+          "identifier": "https://example.com/dataset",
+          "type": "url"
+        },
+        "distribution": [
+          {
+            "title": "title",
+            "data_access": "open",
+            "access_methods": "access methods",
+            "format": ["text/csv"]
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "rules": [{ "rda_dcs": "1.0.0" }, { "ostrails": "1.0.0" }]
+  }
+}
