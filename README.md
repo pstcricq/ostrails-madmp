@@ -1,18 +1,17 @@
 # madmp
 
-[![CI](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml) [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![uv](https://img.shields.io/badge/uv-0.12.5-DE5FE9?logo=uv&logoColor=white)](https://docs.astral.sh/uv/) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![CI](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml) [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![uv](https://img.shields.io/badge/uv-0.12.5-DE5FE9?logo=uv&logoColor=white)](https://docs.astral.sh/uv/) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![FastAPI](https://img.shields.io/badge/FastAPI-DMP%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com) [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org) [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common Standard](https://github.com/RDA-DMP-Common/RDA-DMP-Common-Standard), extended by the [OSTrails Application Profile for maDMPs](https://docs.ostrails.eu/en/latest/commons/dmp/application-profile.html).
 
-The rules of a maDMP and the projects that use them are versioned files. From them, `madmp` builds the Knowledge Model and the document template a [DS Wizard](https://ds-wizard.org) instance needs.
+The rules of a maDMP and the projects that use them are versioned files. From them, `madmp` builds the Knowledge Model and the document template a [DS Wizard](https://ds-wizard.org) instance needs, and stores every DMP in a database of its own, through an API that assesses each DMP against the rules it names.
 
 ## How it works
 
 1. **Rules.** A standard at one version is one JSON file: the base standard, the RDA DMP Common Standard, and the extensions that tighten it, such as the OSTrails profile. An extension may only tighten what the base defines.
 2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from. A published version never changes: a change is a new version.
 3. **Packages.** The pinned rules merge into one model, from which `madmp` builds a DS Wizard Knowledge Model, the questions, and a document template that renders the answers as a maDMP JSON document.
-4. **Assessment.** A DMP is assessed against the rules its metadata names.
-5. **DMP database.** A PostgreSQL database of its own, its tables created by `madmp store migrate`, the definitions copied in by `madmp store sync`.
+4. **DMP API.** Each DMP is assessed against the rules its metadata names, then stored version by version in a PostgreSQL database of its own, which holds a copy of the definitions: a project's template DMP first, then the production DMPs filled from it.
 
 ## What is here
 
@@ -20,7 +19,7 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 |---|---|
 | [`definitions/rules/`](definitions/rules) | the rules, one JSON file per standard per version, `<standard>/<version>.json`, and `rules.schema.json` |
 | [`definitions/projects/`](definitions/projects) | the projects, one YAML file per project per version, `<id>/<version>.yaml`, and `project.schema.json` |
-| [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages, DMP database |
+| [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages, DMP database, DMP API |
 | [`.env.example`](.env.example) | every value the repository reads, with its local value |
 | [`tests/`](tests) | the unit and integration tests, and the DMPs they assess (`tests/fixtures/`) |
 
@@ -54,18 +53,30 @@ Each `madmp` command has a make target of the same name: `madmp store migrate` i
 
 `make validate-rules`, `validate-projects`, `validate-models` and `validate-frozen` each run one step of `validate-all`.
 
-### DMP database
+### DMP database and API
 
 | | |
 |---|---|
 | `make store-migrate` | the tables of the DMP database, up to date |
 | `make store-sync` | the definitions copied into it |
+| `make api-serve` | the DMP API on http://127.0.0.1:8081, until stopped |
 
 The database and its account exist beforehand. One on this machine, at the local values of `.env.example`:
 
 ```bash
 docker run -d --name dmp-db -p 127.0.0.1:5432:5432 -e POSTGRES_DB=dmp -e POSTGRES_USER=dmp_app -e POSTGRES_PASSWORD=<DMP_PASSWORD> postgres:17.5
 ```
+
+Every request sends its token as `Authorization: Bearer <token>`:
+
+| Route | Token | |
+|---|---|---|
+| `POST /templates` | `TEMPLATE_WRITE_TOKEN` | the next version of a project's template DMP |
+| `POST /productions` | `DMP_WRITE_TOKEN` | a new production DMP, filled from a template version |
+| `POST /productions/<key>/versions` | `DMP_WRITE_TOKEN` | its next version |
+| `GET /dmps/<key>` | `DMP_READ_TOKEN` or `DMP_WRITE_TOKEN` | the latest version, with its assessment |
+| `GET /dmps/<key>/versions` | the same | every version, without its content |
+| `GET /dmps/<key>/versions/<number>` | the same | one version |
 
 ## CI
 
@@ -78,7 +89,7 @@ make test-all
 make lint
 ```
 
-`make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database. `make lint` checks the Python, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
+`make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database, the API, and the document each project version's template renders. `make lint` checks the Python, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
 
 ## Licence
 

@@ -97,14 +97,14 @@ packages-generate:
   script:
     - make packages-generate
 
-# The tests of the frozen versions run git; the store extra, psycopg, which
-# the unit tests of madmp store import.
+# The api extra: the unit tests import the API and psycopg; git, which the
+# tests of the frozen versions run.
 test-unit:
   extends: .python-git
   before_script:
     - apt-get update -qq && apt-get install -y -qq --no-install-recommends git make
     - *install-uv
-    - &install-store uv sync --locked --extra store
+    - &install-api uv sync --locked --extra api
   script:
     - make test-unit
 
@@ -124,6 +124,6 @@ test-integration:
   before_script:
     - apt-get update -qq && apt-get install -y -qq --no-install-recommends docker-cli make
     - *install-uv
-    - *install-store
+    - *install-api
   script:
     - make test-integration

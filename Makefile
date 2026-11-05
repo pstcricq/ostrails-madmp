@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -45,7 +45,7 @@ help: ## Show this help
 ##@ Environment
 
 install: ## Install the locked environment and the git hooks
-	$(call run,$(UV) sync --extra store)
+	$(call run,$(UV) sync --extra api)
 	$(call run,$(RUN) pre-commit install)
 
 ##@ Quality
@@ -96,6 +96,11 @@ store-migrate: ## Bring the tables to this version's schema
 
 store-sync: ## Copy the rules and the projects into the database
 	$(call run,$(RUN_ENV) madmp store sync)
+
+##@ API (madmp api, ENV_FILE=<file>, else the environment)
+
+api-serve: ## Serve the DMP API on 127.0.0.1:8081, until stopped
+	$(RUN_ENV) madmp api serve
 
 ##@ Tests
 

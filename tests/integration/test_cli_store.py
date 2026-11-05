@@ -15,7 +15,8 @@ def test_store_migrate_applies_what_the_database_lacks(
     monkeypatch.setattr(Database, "from_environment", lambda: database)
     assert main(["store", "migrate"]) == 0
     out = capsys.readouterr().out
-    assert "001_init.sql" in out and "1 migration applied." in out
+    assert "001_init.sql" in out and "002_dmps.sql" in out
+    assert "2 migrations applied." in out
     assert main(["store", "migrate"]) == 0
     assert "0 migrations applied." in capsys.readouterr().out
 

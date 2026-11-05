@@ -1,6 +1,6 @@
 """Every error this package raises: ``ProblemsError`` and its subclasses for
 what the definitions and the packages hold, ``StoreError`` for the DMP
-database.
+database, ``Refused`` for what the API answers.
 """
 
 from __future__ import annotations
@@ -95,4 +95,35 @@ class PackageError(ProblemsError):
 
 class StoreError(RuntimeError):
     """The DMP database is not what this package can work with: unnamed by the
-    environment, or migrated by a newer version."""
+    environment, migrated by a newer version, or holding a DMP that cannot
+    take the write asked for."""
+
+
+class DmpNotFoundError(StoreError):
+    """No DMP has this key, or it is not one this write can take: a new
+    version is written to a production DMP."""
+
+
+class VersionConflictError(StoreError):
+    """A new version based on one that is no longer the latest: somebody else
+    wrote in between."""
+
+
+class Refused(Exception):
+    """A request the API refuses, and the HTTP status it answers."""
+
+    status = 400
+
+
+class RequestError(Refused, ValueError):
+    """The request cannot be taken: no such project or project version, a body
+    that is not a DMP with its metadata, or metadata naming other rules than
+    the project version does."""
+
+    status = 400
+
+
+class AssessmentError(Refused, ValueError):
+    """The document does not hold up against the rules it names."""
+
+    status = 422

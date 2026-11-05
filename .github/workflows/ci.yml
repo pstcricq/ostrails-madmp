@@ -108,9 +108,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - *setup-uv
-      - &install-store
+      - &install-api
         name: Install the locked environment
-        run: uv sync --locked --extra store
+        run: uv sync --locked --extra api
       - name: The unit tests
         run: make test-unit
 
@@ -121,6 +121,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - *setup-uv
-      - *install-store
+      - *install-api
       - name: The integration tests
         run: make test-integration

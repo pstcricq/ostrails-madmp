@@ -26,12 +26,20 @@ dependencies = ["jsonschema>=4", "pyyaml", "jinja2"]
 [project.scripts]
 madmp = "madmp.cli:main"
 
-# store: the driver of the DMP database.
+# store: the driver of the DMP database. api: the API and the server that
+# runs it, store included.
 [project.optional-dependencies]
 store = ["psycopg[binary]>=3.2"]
+api = ["madmp[store]", "fastapi", "uvicorn"]
 
 [dependency-groups]
-dev = ["pytest", "ruff", "pre-commit"]
+dev = [
+    "pytest",
+    # What FastAPI's TestClient drives the API through.
+    "httpx2",
+    "ruff",
+    "pre-commit",
+]
 
 # Any other uv refuses to run on this project.
 [tool.uv]
