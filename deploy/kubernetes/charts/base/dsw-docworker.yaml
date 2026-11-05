@@ -1,0 +1,115 @@
+# Renders documents: picks the jobs the server queues in the database, writes
+# the files into the bucket. The server's settings but its RSA key. No
+# Service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dsw-docworker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dsw-docworker
+  template:
+    metadata:
+      labels:
+        app: dsw-docworker
+    spec:
+      # Waits until dsw-server answers on /wizard-api, on the worker's own
+      # image, with its python.
+      initContainers:
+        - name: wait-for-dsw-server
+          image: datastewardshipwizard/document-worker:placeholder
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          command:
+            - python
+            - -c
+            - |
+              import time, urllib.request
+              while True:
+                  try:
+                      urllib.request.urlopen("http://dsw-server:3000/wizard-api", timeout=5)
+                      break
+                  except Exception:
+                      print("waiting for dsw-server", flush=True)
+                      time.sleep(5)
+      containers:
+        - name: dsw-docworker
+          image: datastewardshipwizard/document-worker:placeholder
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          env:
+            # APPLICATION_CONFIG_PATH at /dev/null, an empty file: every
+            # setting from the variables below.
+            - name: APPLICATION_CONFIG_PATH
+              value: /dev/null
+
+            - name: GENERAL_CLIENT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_CLIENT_URL
+            - name: GENERAL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: GENERAL_SECRET
+
+            - name: DSW_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DSW_DB_USER
+            - name: DSW_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DSW_DB_PASSWORD
+            - name: DSW_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_DB_NAME
+            - name: DSW_DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_DB_HOST
+            - name: DSW_DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_DB_PORT
+            # $(NAME) is replaced by a variable declared above in this list.
+            - name: DATABASE_CONNECTION_STRING
+              value: postgresql://$(DSW_DB_USER):$(DSW_DB_PASSWORD)@$(DSW_DB_HOST):$(DSW_DB_PORT)/$(DSW_DB_NAME)
+
+            - name: S3_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: S3_URL
+            - name: S3_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_USER
+            - name: S3_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_PASSWORD
+            - name: S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: S3_BUCKET

@@ -1,0 +1,188 @@
+# The DMP API on the madmp image: the pod and its name on the network
+# (dmp-api:8081). No ingress: from outside the cluster, a port-forward,
+#   kubectl -n <namespace> port-forward svc/dmp-api 8081
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dmp-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dmp-api
+  template:
+    metadata:
+      labels:
+        app: dmp-api
+    spec:
+      # Run in order, each to its end, before the API starts.
+      initContainers:
+        # Waits until the DMP database accepts its account, on the server of
+        # DMP_HOST, the stack's dmp-postgres or the target's.
+        - name: wait-for-dmp-db
+          image: dmp-postgres-image:placeholder
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          env:
+            - name: DMP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_HOST
+            - name: DMP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_PORT
+            - name: DMP_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_DB
+            - name: DMP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_USER
+            - name: DMP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              until PGPASSWORD="$DMP_PASSWORD" psql -h "$DMP_HOST" -p "$DMP_PORT" -U "$DMP_USER" \
+                  -d "$DMP_DB" -Atqc 'SELECT 1' > /dev/null 2>&1; do
+                echo "waiting for database $DMP_DB"
+                sleep 2
+              done
+
+        # prepare-db: brings the DMP database's tables to the schema of the
+        # image, then copies in the definitions it carries, as the account that
+        # owns the tables.
+        - name: prepare-db
+          image: madmp:placeholder
+          resources:
+            requests:
+              cpu: 10m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+          command:
+            - sh
+            - -c
+            - madmp store migrate && madmp store sync
+          env:
+            - name: DMP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_HOST
+            - name: DMP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_PORT
+            - name: DMP_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_DB
+            - name: DMP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_USER
+            - name: DMP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_PASSWORD
+      containers:
+        - name: dmp-api
+          image: madmp:placeholder
+          resources:
+            requests:
+              cpu: 10m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+          ports:
+            - name: http
+              containerPort: 8081
+          # These only: no other secret of the stack reaches this pod.
+          env:
+            - name: TEMPLATE_WRITE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: TEMPLATE_WRITE_TOKEN
+            - name: DMP_READ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_READ_TOKEN
+            - name: DMP_WRITE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_WRITE_TOKEN
+            - name: DMP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_HOST
+            - name: DMP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_PORT
+            - name: DMP_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_DB
+            - name: DMP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_USER
+            - name: DMP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_PASSWORD
+          # /health answers once the API has started, within 5 s, without
+          # reaching the database.
+          # readiness: receives traffic once it answers.
+          # liveness: restarted if it stops answering.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dmp-api
+spec:
+  selector:
+    app: dmp-api
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http

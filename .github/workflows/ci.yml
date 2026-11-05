@@ -28,7 +28,7 @@ jobs:
       - &install
         name: Install the locked environment
         run: uv sync --locked
-      - name: Lint the Python
+      - name: Lint the Python and the shell scripts
         run: make lint
 
   pre-commit:
@@ -124,3 +124,68 @@ jobs:
       - *install-api
       - name: The integration tests
         run: make test-integration
+
+  # The values of a test stack, the empty keys of the examples: what differs
+  # per target in the env of its jobs, the other variables, then the secrets,
+  # generated with openssl at each run and masked in the logs.
+  docker-check:
+    runs-on: ubuntu-latest
+    env:
+      DSW_CLIENT_URL: http://localhost:8080/wizard
+      DSW_API_URL: http://localhost:3000/wizard-api
+      S3_URL: http://minio:9000
+    steps:
+      - uses: actions/checkout@v5
+      - &test-values
+        name: The test values
+        run: |
+          variable() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_ENV"; }
+          secret() {
+            printf '%s\n' "$2" | while IFS= read -r line; do echo "::add-mask::$line"; done
+            printf '%s<<END_OF_VALUE\n%s\nEND_OF_VALUE\n' "$1" "$2" >> "$GITHUB_ENV"
+          }
+          variable DMP_HOST dmp-postgres
+          variable DMP_PORT 5432
+          variable DMP_DB dmp
+          variable SUBMISSION_URL http://dmp-api:8081/templates
+          variable STACK_NAME madmp
+          variable MADMP_IMAGE madmp
+          variable MADMP_TAG local
+          variable DSW_DB_HOST dsw-postgres
+          variable DSW_DB_PORT 5432
+          variable DSW_DB_NAME engine-wizard
+          variable S3_BUCKET engine-wizard
+          secret DSW_USER madmp-admin@example.com
+          secret DSW_PASSWORD "$(openssl rand -hex 24)"
+          for key in DMP_USER DSW_DB_USER S3_USER; do
+            secret "$key" "user_$(openssl rand -hex 4)"
+          done
+          for key in DMP_PASSWORD TEMPLATE_WRITE_TOKEN DMP_READ_TOKEN DMP_WRITE_TOKEN \
+                     DSW_DB_PASSWORD S3_PASSWORD; do
+            secret "$key" "$(openssl rand -hex 24)"
+          done
+          secret GENERAL_SECRET "$(openssl rand -hex 16)"
+          secret GENERAL_RSA_PRIVATE_KEY "$(openssl genrsa -traditional 4096 2>/dev/null)"
+      - name: The values hold, and docker-compose.yml reads with them
+        run: make docker-check
+
+  # The same test values, the addresses through the cluster's ingress, and
+  # Kubernetes' own keys.
+  # kubectl, envsubst and curl come with the runner, kubeconform from its
+  # release.
+  k8s-check:
+    runs-on: ubuntu-latest
+    env:
+      DSW_CLIENT_URL: http://localhost:8090/wizard
+      DSW_API_URL: http://localhost:8090/wizard-api
+      S3_URL: http://minio:8090
+      INGRESS_CLASS: traefik
+    steps:
+      - uses: actions/checkout@v5
+      - *test-values
+      - name: Install kubeconform
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin kubeconform
+      - name: The values hold, and the charts build and validate with them
+        run: make k8s-check

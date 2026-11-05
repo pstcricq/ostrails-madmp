@@ -1,0 +1,14 @@
+# The services of the stack, without any value: `placeholder` marks one the
+# template replaces. The pods read the keys of the examples from the
+# ConfigMap madmp-config and the Secret madmp-secrets.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# One file per service, with its ingress when it is reached from outside the
+# cluster, in the order the stack starts.
+resources:
+  - dmp-api.yaml
+  - create-bucket.yaml
+  - dsw-server.yaml
+  - dsw-docworker.yaml
+  - dsw-client.yaml

@@ -1,0 +1,236 @@
+# The stack under docker compose. Every variable is written ${NAME?}: compose
+# stops when NAME is set nowhere. Ports published on 127.0.0.1 only.
+#
+# The three servers are profiles, run when COMPOSE_PROFILES names them:
+# dmp-database, dsw-database and storage. A service waits for one of them
+# only when it runs (required: false).
+
+# The project: it prefixes the container, volume and network names
+# (madmp-* locally).
+name: ${STACK_NAME?}
+
+# DSW's own settings, shared by dsw-server and dsw-docworker. Each name is a
+# DSW setting in upper case (general.clientUrl = GENERAL_CLIENT_URL).
+# GENERAL_RSA_PRIVATE_KEY, which signs the users' tokens, is dsw-server's
+# alone.
+x-dsw-config: &dsw-config
+  GENERAL_CLIENT_URL: ${DSW_CLIENT_URL?}
+  GENERAL_SECRET: ${GENERAL_SECRET?}
+  DATABASE_CONNECTION_STRING: postgresql://${DSW_DB_USER?}:${DSW_DB_PASSWORD?}@${DSW_DB_HOST?}:${DSW_DB_PORT?}/${DSW_DB_NAME?}
+  S3_URL: ${S3_URL?}
+  S3_USERNAME: ${S3_USER?}
+  S3_PASSWORD: ${S3_PASSWORD?}
+  S3_BUCKET: ${S3_BUCKET?}
+
+services:
+  # The PostgreSQL server of the DMPs, on DMP_PORT, not published. Its
+  # database and its account are created at its first start only.
+  dmp-postgres:
+    profiles: [dmp-database]
+    image: postgres:${DMP_POSTGRES_VERSION?}
+    restart: always
+    command: ["postgres", "-p", "${DMP_PORT?}"]
+    environment:
+      POSTGRES_DB: ${DMP_DB?}
+      POSTGRES_USER: ${DMP_USER?}
+      POSTGRES_PASSWORD: ${DMP_PASSWORD?}
+      PGPORT: ${DMP_PORT?}
+    volumes:
+      - dmp-postgres-data:/var/lib/postgresql/data
+    # Healthy once it accepts TCP connections (-h 127.0.0.1). $$ leaves the
+    # variables to the container's shell.
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -h 127.0.0.1 -p "$$PGPORT" -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Brings the DMP database's tables to the schema of the image, copies in the
+  # definitions it carries, and exits, at every `up`, before the API.
+  prepare-db:
+    image: ${MADMP_IMAGE?}:${MADMP_TAG?}
+    # The image's shell, for the two commands in order.
+    entrypoint: sh
+    command:
+      - -c
+      - madmp store migrate && madmp store sync
+    depends_on:
+      dmp-postgres:
+        condition: service_healthy
+        required: false
+    # These variables only.
+    environment: &dmp-database
+      DMP_HOST: ${DMP_HOST?}
+      DMP_PORT: ${DMP_PORT?}
+      DMP_DB: ${DMP_DB?}
+      DMP_USER: ${DMP_USER?}
+      DMP_PASSWORD: ${DMP_PASSWORD?}
+
+  # The DMP API, published on 8081.
+  dmp-api:
+    image: ${MADMP_IMAGE?}:${MADMP_TAG?}
+    restart: always
+    ports:
+      - 127.0.0.1:8081:8081
+    depends_on:
+      prepare-db:
+        condition: service_completed_successfully
+    # These variables only.
+    environment:
+      <<: *dmp-database
+      TEMPLATE_WRITE_TOKEN: ${TEMPLATE_WRITE_TOKEN?}
+      DMP_READ_TOKEN: ${DMP_READ_TOKEN?}
+      DMP_WRITE_TOKEN: ${DMP_WRITE_TOKEN?}
+    # With the image's python.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://localhost:8081/health")
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # The PostgreSQL server of DSW, on DSW_DB_PORT, not published. Its database
+  # and its account are created at its first start only.
+  dsw-postgres:
+    profiles: [dsw-database]
+    image: postgres:${DSW_POSTGRES_VERSION?}
+    restart: always
+    command: ["postgres", "-p", "${DSW_DB_PORT?}"]
+    environment:
+      POSTGRES_DB: ${DSW_DB_NAME?}
+      POSTGRES_USER: ${DSW_DB_USER?}
+      POSTGRES_PASSWORD: ${DSW_DB_PASSWORD?}
+      PGPORT: ${DSW_DB_PORT?}
+    volumes:
+      - dsw-postgres-data:/var/lib/postgresql/data
+    # Healthy once it accepts TCP connections (-h 127.0.0.1). $$ leaves the
+    # variables to the container's shell.
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -h 127.0.0.1 -p "$$PGPORT" -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # The S3 server of DSW's files, published on 9000 for the download links.
+  minio:
+    profiles: [storage]
+    image: pgsty/minio:${MINIO_VERSION?}
+    restart: always
+    command: server /data
+    ports:
+      - 127.0.0.1:9000:9000
+    # The account, read at every start: a changed S3_PASSWORD takes at the
+    # next `up`.
+    environment:
+      MINIO_ROOT_USER: ${S3_USER?}
+      MINIO_ROOT_PASSWORD: ${S3_PASSWORD?}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Creates DSW's bucket on the stack's MinIO if it is not there, or checks
+  # that it is there on the target's server, then exits, at every `up`.
+  create-bucket:
+    image: pgsty/mc:${MC_VERSION?}
+    depends_on:
+      minio:
+        condition: service_healthy
+        required: false
+    environment:
+      S3_URL: ${S3_URL?}
+      S3_USER: ${S3_USER?}
+      S3_PASSWORD: ${S3_PASSWORD?}
+      S3_BUCKET: ${S3_BUCKET?}
+    # mc reads the server, S3_URL with the account added, of the alias dsw
+    # from MC_HOST_dsw, none of them on its command line. $$ leaves the
+    # variables to the container's shell.
+    entrypoint: sh
+    command:
+      - -c
+      - |
+        export MC_HOST_dsw="$${S3_URL%%://*}://$$S3_USER:$$S3_PASSWORD@$${S3_URL#*://}" &&
+        host="$${S3_URL#*://}" && host="$${host%%/*}" && host="$${host%%:*}" &&
+        if [ "$$host" = minio ]; then
+          mc mb --ignore-existing dsw/"$$S3_BUCKET" > /dev/null &&
+          echo "bucket $$S3_BUCKET ready"
+        else
+          mc stat dsw/"$$S3_BUCKET" > /dev/null &&
+          echo "bucket $$S3_BUCKET there"
+        fi
+
+  # The DSW API, on 3000, which the browser calls at DSW_API_URL. It creates
+  # its tables at its first start, and brings them up to a new
+  # DSW_SERVER_VERSION at the next.
+  dsw-server:
+    image: datastewardshipwizard/wizard-server:${DSW_SERVER_VERSION?}
+    # Published for amd64 only: emulated on an ARM host, which needs QEMU on
+    # Linux.
+    platform: linux/amd64
+    restart: always
+    ports:
+      - 127.0.0.1:3000:3000
+    depends_on:
+      dsw-postgres:
+        condition: service_healthy
+        required: false
+      create-bucket:
+        condition: service_completed_successfully
+    environment:
+      <<: *dsw-config
+      GENERAL_RSA_PRIVATE_KEY: ${GENERAL_RSA_PRIVATE_KEY?}
+    # /wizard-api answers with what DSW reads from its database, its version
+    # and the document worker's. Up to 300 s for the first start before
+    # failures count.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/wizard-api || exit 1"]
+      interval: 10s
+      timeout: 10s
+      start_period: 300s
+      retries: 3
+
+  # Renders documents: picks the jobs the server queues in the database, writes
+  # the files into the bucket. No port.
+  dsw-docworker:
+    image: datastewardshipwizard/document-worker:${DSW_DOCWORKER_VERSION?}
+    restart: always
+    depends_on:
+      dsw-server:
+        condition: service_healthy
+    environment:
+      <<: *dsw-config
+      # APPLICATION_CONFIG_PATH at /dev/null, an empty file: every setting
+      # from the variables above.
+      APPLICATION_CONFIG_PATH: /dev/null
+
+  # The web interface, opened at DSW_CLIENT_URL. At its start, it writes
+  # DSW_API_URL into the app's config.js, which the browser loads, then calls
+  # the API there itself.
+  dsw-client:
+    image: datastewardshipwizard/wizard-client:${DSW_CLIENT_VERSION?}
+    restart: always
+    ports:
+      - 127.0.0.1:8080:8080
+    environment:
+      API_URL: ${DSW_API_URL?}
+    # nginx answers on /wizard/ once it serves the app, read with the image's
+    # wget.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/wizard/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+# Named volumes: the data survives `docker compose down`, not `down -v`.
+volumes:
+  dmp-postgres-data:
+  dsw-postgres-data:
+  minio-data:

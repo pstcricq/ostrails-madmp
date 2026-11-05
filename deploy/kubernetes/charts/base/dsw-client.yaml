@@ -1,0 +1,83 @@
+# The web interface, opened at DSW_CLIENT_URL, through the ingress: the pod,
+# its name on the network (dsw-client:8080). At its start, it writes
+# DSW_API_URL into the app's config.js, which the browser loads, then calls the
+# API there itself.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dsw-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dsw-client
+  template:
+    metadata:
+      labels:
+        app: dsw-client
+    spec:
+      containers:
+        - name: dsw-client
+          image: datastewardshipwizard/wizard-client:placeholder
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_API_URL
+          # nginx answers on /wizard/ once it serves the app, within 5 s.
+          # readiness: receives traffic once it answers.
+          # liveness: restarted if it stops answering.
+          readinessProbe:
+            httpGet:
+              path: /wizard/
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /wizard/
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dsw-client
+spec:
+  selector:
+    app: dsw-client
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# The entrance from outside the cluster, on the host of DSW_CLIENT_URL, entered
+# through /wizard.
+#   <host>/wizard  -> dsw-client
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dsw-client
+spec:
+  rules:
+    - host: placeholder
+      http:
+        paths:
+          - path: /wizard
+            pathType: Prefix
+            backend:
+              service:
+                name: dsw-client
+                port:
+                  name: http

@@ -16,6 +16,8 @@ repos:
     hooks:
       - id: check-merge-conflict
       - id: check-yaml
+        # The Kubernetes manifests hold several objects each.
+        args: [--allow-multiple-documents]
       - id: check-json
       - id: check-toml
       - id: check-added-large-files
@@ -23,8 +25,9 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
-  # ruff through uv, the version of uv.lock, on the files of the commit. The
-  # validations and the tests through their make target, on every file.
+  # ruff and shellcheck through uv, the versions of uv.lock, on the files of
+  # the commit. The validations and the tests through their make target, on
+  # every file.
   - repo: local
     hooks:
       - id: ruff-check
@@ -38,6 +41,13 @@ repos:
         entry: uv run ruff format
         language: system
         types: [python]
+
+      # -x reads the scripts a script sources, whatever files it is given.
+      - id: shellcheck
+        name: shellcheck
+        entry: uv run shellcheck -x
+        language: system
+        types: [shell]
 
       - id: validate-rules
         name: rules against the meta-schema

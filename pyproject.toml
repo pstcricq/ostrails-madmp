@@ -13,7 +13,7 @@ version = "1.0.0"
 description = "Machine-actionable DMPs: their rules, their projects, their assessment, their storage and their creation in DSW."
 readme = "README.md"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICE"]
 authors = [
     { name = "Pierre St-Cricq", email = "pierre64saint-cricq@hotmail.fr" },
 ]
@@ -38,6 +38,8 @@ dev = [
     # What FastAPI's TestClient drives the API through.
     "httpx2",
     "ruff",
+    # shellcheck, as a binary in .venv.
+    "shellcheck-py",
     "pre-commit",
 ]
 

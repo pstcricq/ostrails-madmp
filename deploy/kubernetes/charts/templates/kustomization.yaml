@@ -1,0 +1,115 @@
+# The values of the stack, as holes named after the keys of the examples, and
+# the hosts of the ingresses, read from the URLs (INGRESS_CLIENT_HOST from
+# DSW_CLIENT_URL, INGRESS_API_HOST from DSW_API_URL, INGRESS_S3_HOST from
+# S3_URL), and the port of MinIO's Service (S3_PORT, from S3_URL). Filled in a
+# copy of the charts, never in the repository. Every hole is required,
+# including one written in a comment.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# The ConfigMap madmp-config the pods read (the `key:` of the charts). Its name
+# gets a suffix computed from its content: a changed value renames it, which
+# restarts the pods that read it.
+configMapGenerator:
+  - name: madmp-config
+    literals:
+      - DSW_CLIENT_URL=${DSW_CLIENT_URL}
+      - DSW_API_URL=${DSW_API_URL}
+      - S3_URL=${S3_URL}
+      - DMP_HOST=${DMP_HOST}
+      - DMP_PORT=${DMP_PORT}
+      - DMP_DB=${DMP_DB}
+      - DSW_DB_HOST=${DSW_DB_HOST}
+      - DSW_DB_PORT=${DSW_DB_PORT}
+      - DSW_DB_NAME=${DSW_DB_NAME}
+      - S3_BUCKET=${S3_BUCKET}
+
+# Every ingress on INGRESS_CLASS, then each on the host of its URL.
+patches:
+  - target:
+      kind: Ingress
+    patch: |-
+      - op: add
+        path: /spec/ingressClassName
+        value: ${INGRESS_CLASS}
+  - target:
+      kind: Ingress
+      name: dsw-server
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: ${INGRESS_API_HOST}
+  - target:
+      kind: Ingress
+      name: dsw-client
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: ${INGRESS_CLIENT_HOST}
+  - target:
+      kind: Ingress
+      name: minio
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: ${INGRESS_S3_HOST}
+  # Each PostgreSQL server of the stack, its container and its Service on its
+  # port.
+  - target:
+      kind: Deployment
+      name: dmp-postgres
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/ports/0/containerPort
+        value: ${DMP_PORT}
+  - target:
+      kind: Service
+      name: dmp-postgres
+    patch: |-
+      - op: replace
+        path: /spec/ports/0/port
+        value: ${DMP_PORT}
+  - target:
+      kind: Deployment
+      name: dsw-postgres
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/ports/0/containerPort
+        value: ${DSW_DB_PORT}
+  - target:
+      kind: Service
+      name: dsw-postgres
+    patch: |-
+      - op: replace
+        path: /spec/ports/0/port
+        value: ${DSW_DB_PORT}
+  # MinIO's Service on the port of S3_URL.
+  - target:
+      kind: Service
+      name: minio
+    patch: |-
+      - op: replace
+        path: /spec/ports/0/port
+        value: ${S3_PORT}
+
+# The placeholders of the image tags, quoted, as strings.
+images:
+  - name: datastewardshipwizard/wizard-server
+    newTag: "${DSW_SERVER_VERSION}"
+  - name: datastewardshipwizard/wizard-client
+    newTag: "${DSW_CLIENT_VERSION}"
+  - name: datastewardshipwizard/document-worker
+    newTag: "${DSW_DOCWORKER_VERSION}"
+  - name: madmp
+    newName: ${MADMP_IMAGE}
+    newTag: "${MADMP_TAG}"
+  - name: dmp-postgres-image
+    newName: postgres
+    newTag: "${DMP_POSTGRES_VERSION}"
+  - name: dsw-postgres-image
+    newName: postgres
+    newTag: "${DSW_POSTGRES_VERSION}"
+  - name: pgsty/minio
+    newTag: "${MINIO_VERSION}"
+  - name: pgsty/mc
+    newTag: "${MC_VERSION}"

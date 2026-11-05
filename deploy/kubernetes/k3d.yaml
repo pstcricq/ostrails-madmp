@@ -1,0 +1,32 @@
+# The local Kubernetes cluster: k3s run by k3d in Docker containers.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: madmp-cluster
+
+# One node, which both manages the cluster and runs the pods.
+servers: 1
+agents: 0
+
+# The Kubernetes version of the clusters the stack targets, which this one
+# runs.
+image: rancher/k3s:v1.30.10-k3s1
+
+# The Kubernetes API, for kubectl: 127.0.0.1:6550 on this machine.
+kubeAPI:
+  hostIP: "127.0.0.1"
+  hostPort: "6550"
+
+# 127.0.0.1:8090 on this machine -> port 80 of the cluster, where Traefik
+# (the ingress) routes to the pods.
+ports:
+  - port: 127.0.0.1:8090:80
+    nodeFilters:
+      - loadbalancer
+
+# Adds the context k3d-madmp-cluster to ~/.kube/config. It becomes the
+# current one only if none is set.
+options:
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: false

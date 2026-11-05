@@ -26,16 +26,17 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --extra api --no-install-project
 
 # Then the package itself, installed editable: /app/.venv points at /app/src,
-# its README the package's description, its licence beside it.
-COPY README.md LICENSE ./
+# its README the package's description, its licence and notice beside it.
+COPY README.md LICENSE NOTICE ./
 COPY src src
 COPY definitions definitions
 RUN uv sync --locked --no-dev --extra api
 
 FROM ${BASE}
-# The environment, the package, the definitions and the licence, at the paths
-# of the build stage, the environment's commands first on the PATH.
-COPY --from=build /app/LICENSE /app/
+# The environment, the package, the definitions, the licence and the notice,
+# at the paths of the build stage, the environment's commands first on the
+# PATH.
+COPY --from=build /app/LICENSE /app/NOTICE /app/
 COPY --from=build /app/.venv /app/.venv
 COPY --from=build /app/src /app/src
 COPY --from=build /app/definitions /app/definitions

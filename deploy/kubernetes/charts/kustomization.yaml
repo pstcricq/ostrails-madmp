@@ -1,0 +1,22 @@
+# The stack on Kubernetes: the services of base/, the servers of components/
+# the stack runs itself, with the values of templates/. Built from a copy of
+# the charts whose template is filled with the values, and which keeps the
+# components of the servers the stack runs itself only.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Added to every object, the components' included, to find them all:
+#   -l app.kubernetes.io/part-of=madmp
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: madmp
+
+resources:
+  - base
+
+# templates last, over every object, the components' included.
+components:
+  - components/dmp-database
+  - components/dsw-database
+  - components/storage
+  - templates

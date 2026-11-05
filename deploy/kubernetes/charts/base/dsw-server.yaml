@@ -1,0 +1,157 @@
+# The DSW API, on 3000, which the browser calls at DSW_API_URL, through the
+# ingress: the pod, its name on the network (dsw-server:3000). It creates its
+# tables at its first start, and brings them up to a new DSW_SERVER_VERSION at
+# the next.
+
+# Each DSW setting is an environment variable, its name in upper case
+# (general.clientUrl = GENERAL_CLIENT_URL). GENERAL_RSA_PRIVATE_KEY, which
+# signs the users' tokens, is the server's alone. Image published for amd64
+# only: emulated on an ARM host, which needs QEMU on Linux.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dsw-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dsw-server
+  template:
+    metadata:
+      labels:
+        app: dsw-server
+    spec:
+      containers:
+        - name: dsw-server
+          image: datastewardshipwizard/wizard-server:placeholder
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: GENERAL_CLIENT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_CLIENT_URL
+            - name: GENERAL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: GENERAL_SECRET
+            - name: GENERAL_RSA_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: GENERAL_RSA_PRIVATE_KEY
+
+            - name: DSW_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DSW_DB_USER
+            - name: DSW_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DSW_DB_PASSWORD
+            - name: DSW_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_DB_NAME
+            - name: DSW_DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_DB_HOST
+            - name: DSW_DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DSW_DB_PORT
+            # $(NAME) is replaced by a variable declared above in this list.
+            - name: DATABASE_CONNECTION_STRING
+              value: postgresql://$(DSW_DB_USER):$(DSW_DB_PASSWORD)@$(DSW_DB_HOST):$(DSW_DB_PORT)/$(DSW_DB_NAME)
+
+            - name: S3_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: S3_URL
+            - name: S3_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_USER
+            - name: S3_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_PASSWORD
+            - name: S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: S3_BUCKET
+
+          # /wizard-api answers with what DSW reads from its database, its
+          # version and the document worker's, within 10 s.
+          # startup: up to 5 minutes for the first start (30 x 10 s).
+          # readiness: receives traffic once it answers.
+          # liveness: restarted if it stops answering.
+          startupProbe:
+            httpGet:
+              path: /wizard-api
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /wizard-api
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /wizard-api
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dsw-server
+spec:
+  selector:
+    app: dsw-server
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+# The entrance from outside the cluster, on the host of DSW_API_URL.
+#   <host>/wizard-api  -> dsw-server
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dsw-server
+spec:
+  rules:
+    - host: placeholder
+      http:
+        paths:
+          - path: /wizard-api
+            pathType: Prefix
+            backend:
+              service:
+                name: dsw-server
+                port:
+                  name: http

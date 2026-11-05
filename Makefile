@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check k8s-check k3d-up k3d-down ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -31,6 +31,14 @@ PROJECT ?=
 # Where `make packages-generate` writes the packages it builds; unset, nowhere.
 OUT ?=
 
+# Every shell script of the repository, for shellcheck.
+SCRIPTS := find . -name '*.sh' -not -path './.*/*'
+
+# The local Kubernetes cluster by its name in deploy/kubernetes/k3d.yaml
+# (metadata.name), and its context.
+CLUSTER := $(shell sed -n 's/^  name: \(..*\)/\1/p' deploy/kubernetes/k3d.yaml)
+CONTEXT := k3d-$(CLUSTER)
+
 # The image `make image-build` builds, its name and tag.
 IMAGE ?= madmp:local
 
@@ -53,9 +61,10 @@ install: ## Install the locked environment and the git hooks
 
 ##@ Quality
 
-lint: ## Lint the Python (ruff check + format --check)
+lint: ## Lint the Python (ruff) and the shell scripts (shellcheck)
 	$(call run,$(RUN) ruff check .)
 	$(call run,$(RUN) ruff format --check .)
+	$(call run,$(SCRIPTS) -exec $(RUN) shellcheck -x {} + && echo "shellcheck: no issue")
 
 format: ## Format and auto-fix the Python
 	$(call run,$(RUN) ruff check --fix .)
@@ -120,8 +129,30 @@ dsw-sync: dsw-admin dsw-publish dsw-submission ## Run dsw-admin, dsw-publish, th
 
 ##@ Image (docker)
 
-image-build: ## Build the madmp image from this checkout (IMAGE=madmp:local)
+image-build: ## Build the madmp image of this checkout (IMAGE=madmp:local)
 	$(call run,docker build -t $(IMAGE) .)
+
+##@ Docker (deploy/docker/.env, else the environment)
+
+docker-check: ## Check the values, then docker-compose.yml with them
+	$(call run,bash deploy/docker/scripts/check.sh)
+
+##@ k3d (the local Kubernetes cluster, deploy/kubernetes/k3d.yaml)
+
+k3d-up: ## Create the local Kubernetes cluster
+	$(call run,k3d cluster create --config deploy/kubernetes/k3d.yaml --wait)
+
+# The current context unset when it was the cluster's, any other left as is.
+k3d-down: ## Delete the cluster and everything on it
+	current="$$(kubectl config current-context 2>/dev/null || true)"; \
+	k3d cluster delete $(CLUSTER); \
+	if [ "$$current" = $(CONTEXT) ]; then kubectl config unset current-context; fi; \
+	echo
+
+##@ Kubernetes (deploy/kubernetes/.env, else the environment)
+
+k8s-check: ## Check the values, then build and validate the charts
+	$(call run,bash deploy/kubernetes/scripts/check.sh)
 
 ##@ Tests
 
@@ -135,7 +166,7 @@ test-integration: ## Run the tests that need a PostgreSQL (docker)
 
 ##@ CI
 
-ci: lint pre-commit validate-all packages-generate test-all ## Everything the CI checks, in this order
+ci: lint pre-commit validate-all packages-generate test-all docker-check k8s-check ## Everything the CI checks, in this order
 
 ##@ Cleanup
 

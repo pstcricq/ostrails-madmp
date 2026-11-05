@@ -1,0 +1,7 @@
+# The S3 server of the stack, when the host of S3_URL is minio.
+# Left out of the stack otherwise.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - minio.yaml

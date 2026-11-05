@@ -67,10 +67,11 @@ def prepared(image, db):
     }
 
 
-def test_the_image_carries_its_licence(image):
-    shown = _docker("run", "--rm", image, "cat", "/app/LICENSE")
+def test_the_image_carries_its_licence_and_notice(image):
+    shown = _docker("run", "--rm", image, "cat", "/app/LICENSE", "/app/NOTICE")
     assert shown.returncode == 0, shown.stderr
     assert "Apache License" in shown.stdout
+    assert "dsw-deployment-example" in shown.stdout
 
 
 def test_the_image_migrates_an_empty_database(prepared):

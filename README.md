@@ -1,6 +1,6 @@
 # madmp
 
-[![CI](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml) [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![uv](https://img.shields.io/badge/uv-0.12.5-DE5FE9?logo=uv&logoColor=white)](https://docs.astral.sh/uv/) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![FastAPI](https://img.shields.io/badge/FastAPI-DMP%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com) [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org) [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![CI](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml) [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![uv](https://img.shields.io/badge/uv-0.12.5-DE5FE9?logo=uv&logoColor=white)](https://docs.astral.sh/uv/) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![FastAPI](https://img.shields.io/badge/FastAPI-DMP%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com) [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org) [![DS Wizard 4.31](https://img.shields.io/badge/DS%20Wizard-4.31-1F6FB2)](https://ds-wizard.org) [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](deploy/docker) [![Kubernetes 1.30](https://img.shields.io/badge/Kubernetes-1.30-326CE5?logo=kubernetes&logoColor=white)](deploy/kubernetes) [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common Standard](https://github.com/RDA-DMP-Common/RDA-DMP-Common-Standard), extended by the [OSTrails Application Profile for maDMPs](https://docs.ostrails.eu/en/latest/commons/dmp/application-profile.html).
 
@@ -22,14 +22,16 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 | [`definitions/projects/`](definitions/projects) | the projects, one YAML file per project per version, `<id>/<version>.yaml`, and `project.schema.json` |
 | [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages, DMP database, DMP API, DS Wizard instance |
 | [`Dockerfile`](Dockerfile) | the madmp image, which serves the DMP API and runs any `madmp` command |
-| [`.env.example`](.env.example) | every value the repository reads, with its local value |
+| [`deploy/`](deploy) | the stack, the DMP API and DS Wizard with their servers, under Docker Compose (`deploy/docker/`) and on Kubernetes (`deploy/kubernetes/`) |
+| [`.env.example`](.env.example) | every value the repository reads, with its local value; the values of one target alone are in its `deploy/<target>/.env.example` |
 | [`tests/`](tests) | the unit and integration tests, and the DMPs they assess (`tests/fixtures/`) |
 
 ## Requirements
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) 0.12.5
 - make
-- Docker, for the integration tests and the image
+- Docker, for the integration tests, the image and the stack
+- kubectl, envsubst (gettext) and [kubeconform](https://github.com/yannh/kubeconform), for the stack on Kubernetes, and [k3d](https://k3d.io) for its local cluster
 
 ## Quick start
 
@@ -91,6 +93,47 @@ Any DS Wizard instance, at `DSW_API_URL`.
 | `make dsw-submission` | the submission service `madmp`, which sends a submitted document to `SUBMISSION_URL` |
 | `make dsw-sync` | the three above, in this order |
 
+## Deploy
+
+The stack runs the DMP API and DS Wizard, with the servers they need: a PostgreSQL for the DMPs, one for DS Wizard, and MinIO for DS Wizard's files. A target with servers of its own names them in its values instead, and the stack leaves them out.
+
+```mermaid
+flowchart LR
+    browser(["Browser"]) --> client["dsw-client"]
+    browser --> server["dsw-server"]
+    browser -- "downloads" --> s3[("minio")]
+    server --> dswdb[("dsw-postgres")]
+    server --> s3
+    worker["dsw-docworker"] --> dswdb
+    worker --> s3
+    server -- "submission" --> api["dmp-api"]
+    clients(["API clients"]) --> api
+    prepare["prepare-db<br/>migrate, sync"] --> dmpdb[("dmp-postgres")]
+    api --> dmpdb
+```
+
+The values of each target are every empty key of `.env.example` and of the target's own `.env.example`, filled in with the local value given beside each:
+
+```bash
+grep -E '^[A-Z][A-Z0-9_]*=$' .env.example > deploy/docker/.env
+cat .env.example deploy/kubernetes/.env.example | grep -E '^[A-Z][A-Z0-9_]*=$' > deploy/kubernetes/.env
+```
+
+Without its file, a target reads the environment.
+
+### Docker Compose
+
+| | |
+|---|---|
+| `make docker-check` | the values, and `docker-compose.yml` read with them |
+
+### Kubernetes
+
+| | |
+|---|---|
+| `make k8s-check` | the values, and the charts built with them and validated against the Kubernetes schemas |
+| `make k3d-up`, `make k3d-down` | the local cluster created, deleted |
+
 ## Image
 
 ```bash
@@ -105,7 +148,7 @@ docker run --rm madmp:local madmp --help
 
 ## CI
 
-The same pipeline runs on GitHub Actions and on GitLab CI, one job per make target of the same name: lint, hooks, validation, packages, unit and integration tests. `make ci` runs every check of the CI on this machine.
+The same pipeline runs on GitHub Actions and on GitLab CI, one job per make target of the same name: lint, hooks, validation, packages, unit and integration tests, and the checks of the stack. `make ci` runs every check of the CI on this machine.
 
 ## Test
 
@@ -114,10 +157,10 @@ make test-all
 make lint
 ```
 
-`make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database, the API, the image, and the document each project version's template renders. `make lint` checks the Python, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
+`make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database, the API, the image, and the document each project version's template renders. `make lint` checks the Python and the shell scripts, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
 
 ## Licence
 
 Copyright 2026 Pierre St-Cricq dit Lompre (SOCIB), as part of the OSTrails project, funded by the European Union, grant agreement 101130187.
 
-Apache 2.0, see [LICENSE](LICENSE).
+Apache 2.0, see [LICENSE](LICENSE). The DS Wizard stack derives from the DS Wizard team's deployment example, under the MIT License, see [NOTICE](NOTICE).

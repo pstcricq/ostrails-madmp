@@ -127,3 +127,59 @@ test-integration:
     - *install-api
   script:
     - make test-integration
+
+# The values of a test stack, the empty keys of the examples: what differs per
+# target in the variables of its jobs, the other variables, then the secrets,
+# generated with openssl at each run, exported in the job's shell.
+.test-values:
+  before_script:
+    - &test-values |
+      export DMP_HOST=dmp-postgres DMP_PORT=5432 DMP_DB=dmp
+      export SUBMISSION_URL=http://dmp-api:8081/templates
+      export STACK_NAME=madmp MADMP_IMAGE=madmp MADMP_TAG=local
+      export DSW_DB_HOST=dsw-postgres DSW_DB_PORT=5432 DSW_DB_NAME=engine-wizard
+      export S3_BUCKET=engine-wizard
+      export DSW_USER=madmp-admin@example.com DSW_PASSWORD="$(openssl rand -hex 24)"
+      for key in DMP_USER DSW_DB_USER S3_USER; do
+        export "$key=user_$(openssl rand -hex 4)"
+      done
+      for key in DMP_PASSWORD TEMPLATE_WRITE_TOKEN DMP_READ_TOKEN DMP_WRITE_TOKEN \
+                 DSW_DB_PASSWORD S3_PASSWORD; do
+        export "$key=$(openssl rand -hex 24)"
+      done
+      export GENERAL_SECRET="$(openssl rand -hex 16)"
+      export GENERAL_RSA_PRIVATE_KEY="$(openssl genrsa -traditional 4096 2>/dev/null)"
+
+.docker-values:
+  variables: &docker-values
+    DSW_CLIENT_URL: http://localhost:8080/wizard
+    DSW_API_URL: http://localhost:3000/wizard-api
+    S3_URL: http://minio:9000
+
+docker-check:
+  stage: report
+  image: docker:28
+  variables: *docker-values
+  before_script:
+    - apk add --no-cache bash make openssl
+    - *test-values
+  script:
+    - make docker-check
+
+# kubectl and envsubst from Alpine, kubeconform from its release.
+k8s-check:
+  stage: report
+  image: alpine:3.22
+  variables:
+    DSW_CLIENT_URL: http://localhost:8090/wizard
+    DSW_API_URL: http://localhost:8090/wizard-api
+    S3_URL: http://minio:8090
+    INGRESS_CLASS: traefik
+  before_script:
+    - apk add --no-cache bash curl gettext kubectl make openssl
+    - |
+      curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz \
+        | tar -xz -C /usr/local/bin kubeconform
+    - *test-values
+  script:
+    - make k8s-check

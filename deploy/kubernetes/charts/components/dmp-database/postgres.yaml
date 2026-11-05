@@ -1,0 +1,107 @@
+# The PostgreSQL server of the DMPs, when DMP_HOST is dmp-postgres: its disk, the
+# pod that runs it, its name on the network, on DMP_PORT. Its database and
+# its account are created at its first start only.
+
+# The disk, kept when the pod is replaced.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dmp-postgres-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# The pod. Recreate: the old pod stops before the new one starts, the disk is
+# used by one pod at a time.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dmp-postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dmp-postgres
+  template:
+    metadata:
+      labels:
+        app: dmp-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: dmp-postgres-image:placeholder
+          # $(NAME) is replaced by a variable declared in the list below.
+          args: ["-p", "$(PGPORT)"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: PGPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: DMP_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: DMP_PASSWORD
+            # A subdirectory of the disk.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          # Ready once it accepts TCP connections; restarted if it stops
+          # answering.
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -h 127.0.0.1 -p "$PGPORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -h 127.0.0.1 -p "$PGPORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: dmp-postgres-data
+---
+# The name on the network: the other pods reach it as dmp-postgres, on
+# DMP_PORT.
+apiVersion: v1
+kind: Service
+metadata:
+  name: dmp-postgres
+spec:
+  selector:
+    app: dmp-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

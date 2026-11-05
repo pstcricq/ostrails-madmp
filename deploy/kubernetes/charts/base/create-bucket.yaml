@@ -1,0 +1,65 @@
+# With the stack's MinIO, the host of S3_URL minio, creates DSW's bucket if it
+# is missing, tried again every 2 s until MinIO accepts the account and the
+# bucket, the last answer of mc printed. An existing bucket is left as it is.
+# With the target's server, checks that the bucket is there. Then stops.
+#   restartPolicy OnFailure   up to 10 retries on an error
+#   ttlSecondsAfterFinished   deleted a minute after it succeeds
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-bucket
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          # mc, the S3 command-line client made by MinIO, a pgsty build.
+          image: pgsty/mc:placeholder
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          env:
+            - name: S3_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: S3_URL
+            - name: S3_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_USER
+            - name: S3_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_PASSWORD
+            - name: S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: madmp-config
+                  key: S3_BUCKET
+          # mc reads the server, S3_URL with the account added, of the alias
+          # dsw from MC_HOST_dsw, none of them on its command line.
+          command:
+            - sh
+            - -c
+            - |
+              export MC_HOST_dsw="${S3_URL%%://*}://$S3_USER:$S3_PASSWORD@${S3_URL#*://}"
+              host="${S3_URL#*://}"; host="${host%%/*}"; host="${host%%:*}"
+              if [ "$host" = minio ]; then
+                until answer="$(mc mb --ignore-existing dsw/"$S3_BUCKET" 2>&1)"; do
+                  echo "waiting for minio: $(printf '%s' "$answer" | tail -1)"
+                  sleep 2
+                done
+                echo "bucket $S3_BUCKET ready"
+              else
+                mc stat dsw/"$S3_BUCKET" > /dev/null &&
+                echo "bucket $S3_BUCKET there"
+              fi

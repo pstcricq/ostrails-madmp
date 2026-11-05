@@ -1,0 +1,116 @@
+# MinIO, the S3 server of DSW's files: its disk, the pod, its name on the
+# network (minio), and its ingress for the download links.
+
+# The disk, kept when the pod is replaced.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+# Recreate: one pod at a time on the disk.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          # pgsty build, a community fork of MinIO.
+          image: pgsty/minio:placeholder
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          args:
+            - server
+            - /data
+          ports:
+            - name: s3
+              containerPort: 9000
+          # The account, read at every start, under the names DSW reads: a
+          # changed S3_PASSWORD takes at the next deployment.
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: madmp-secrets
+                  key: S3_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: s3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: s3
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: minio-data
+---
+# The name on the network, on the port of S3_URL: the pods reach MinIO at
+# S3_URL, as the browser does through the ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: s3
+      port: placeholder
+      targetPort: s3
+---
+# The entrance of S3 from outside the cluster, for the download links, on a
+# host of its own, read from S3_URL, from the root.
+#   <s3 host>/  -> minio
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio
+spec:
+  rules:
+    - host: placeholder
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  name: s3

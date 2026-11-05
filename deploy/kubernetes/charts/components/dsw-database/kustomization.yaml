@@ -1,0 +1,7 @@
+# The PostgreSQL server of the stack named dsw-postgres, when DSW_DB_HOST names it.
+# Left out of the stack otherwise.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - postgres.yaml
