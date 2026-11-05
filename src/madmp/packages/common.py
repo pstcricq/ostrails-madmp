@@ -15,6 +15,9 @@ from madmp.model import Field, Model
 # project's own dates, and ``dmp_id``, its URL.
 COMPUTED_FIELDS = frozenset({"created", "modified", "dmp_id"})
 
+# The output format a submitted document is rendered in.
+SUBMISSION_FORMAT = "JSON"
+
 # What a vocabulary calls "none of those listed", compared case-insensitively:
 # ``other`` and ``Other`` alike.
 ESCAPE_VALUE = "other"

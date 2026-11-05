@@ -6,19 +6,15 @@ import argparse
 from pathlib import Path
 
 from madmp.cli import output
-from madmp.definitions import (
-    PROJECTS,
-    files,
-    load,
-)
+from madmp.definitions import PROJECTS, files, load
 from madmp.errors import PackageError, ProblemsError
-from madmp.model import model_for
-from madmp.packages.build import build, write
+from madmp.model import Model, model_for
+from madmp.packages.build import Packages, build, write
 from madmp.packages.common import utc_timestamp
 from madmp.paths import PROJECTS_DIR
 
 
-def _projects(given: list[str]) -> list[Path]:
+def projects(given: list[str]) -> list[Path]:
     """The project versions named on the command line, a project's directory
     standing for every one of its versions, or every version of every
     project. Each project's oldest version first."""
@@ -34,29 +30,37 @@ def _projects(given: list[str]) -> list[Path]:
     return paths
 
 
+def built(path: Path, stamp: str) -> tuple[dict, Model, Packages] | None:
+    """A project version's definition, model and packages, or ``None`` once
+    its line is printed: a project that does not load is skipped, packages
+    that do not hold fail."""
+    try:
+        definition = load(PROJECTS, path)
+        model = model_for(definition["rules"])
+    except ProblemsError:
+        output.fail(
+            output.shown(path), "does not load, see `madmp validate all`.", skip=True
+        )
+        return None
+    try:
+        return definition, model, build(definition, model, created_at=stamp)
+    except PackageError as err:
+        output.fail(output.shown(path), "\n".join(f"- {p}" for p in err.problems))
+        return None
+
+
 def _generate(args: argparse.Namespace) -> int:
     """Build and check each project version's KM and document template, and
     write them into ``--out`` when it is given. One time stamp for the whole
     run."""
-    paths = _projects(args.projects)
+    paths = projects(args.projects)
     stamp = utc_timestamp()
 
     def step(path: Path) -> bool:
-        try:
-            definition = load(PROJECTS, path)
-            model = model_for(definition["rules"])
-        except ProblemsError:
-            output.fail(
-                output.shown(path),
-                "does not load, see `madmp validate all`.",
-                skip=True,
-            )
+        result = built(path, stamp)
+        if result is None:
             return False
-        try:
-            packages = build(definition, model, created_at=stamp)
-        except PackageError as err:
-            output.fail(output.shown(path), "\n".join(f"- {p}" for p in err.problems))
-            return False
+        definition, model, packages = result
         fields = sum(1 for _ in model.walk())
         line = f"{definition['id']} {definition['version']} : KM and document template"
         if args.out is None:

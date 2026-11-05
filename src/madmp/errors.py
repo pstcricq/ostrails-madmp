@@ -1,6 +1,7 @@
 """Every error this package raises: ``ProblemsError`` and its subclasses for
-what the definitions and the packages hold, ``StoreError`` for the DMP
-database, ``Refused`` for what the API answers.
+what the definitions and the packages hold, ``ServiceError`` for a remote
+service, ``StoreError`` for the DMP database, ``Refused`` for what the API
+answers.
 """
 
 from __future__ import annotations
@@ -91,6 +92,40 @@ class PackageError(ProblemsError):
     """The two packages built for a project version do not hold: the KM emits
     an entity twice, or the template's body is not Jinja, with the package id
     as subject."""
+
+
+class PublishError(ProblemsError):
+    """A DSW instance cannot be worked on as the environment or the instance
+    stands: a value missing, or a package version the instance holds with
+    another content."""
+
+    noun = "publish problem"
+
+
+class ServiceError(RuntimeError):
+    """A remote service refused a call, or could not be reached at all.
+
+    Each service raises its own subclass and sets ``service`` to the name the
+    message opens on. ``status`` is the HTTP status, or ``None`` when nothing
+    was ever answered.
+    """
+
+    service = "Service"
+
+    def __init__(self, status: int | None, message: str):
+        self.status = status
+        prefix = (
+            f"{self.service} API error {status}"
+            if status
+            else f"{self.service} unreachable"
+        )
+        super().__init__(f"{prefix}: {message}")
+
+
+class DswError(ServiceError):
+    """A DS Wizard instance refused a call, or could not be reached."""
+
+    service = "DSW"
 
 
 class StoreError(RuntimeError):

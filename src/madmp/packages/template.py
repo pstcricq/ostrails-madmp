@@ -13,6 +13,7 @@ from typing import Any
 from madmp.model import Field, Model
 from madmp.packages.common import (
     COMPUTED_FIELDS,
+    SUBMISSION_FORMAT,
     field_kind,
     needs_a_synthetic_escape,
     package_description,
@@ -50,7 +51,7 @@ COMPUTED_FIELD_EXPR: dict[str, str] = {
 # of the bundle, every one a row of the table of its readme.
 FORMATS: list[dict[str, Any]] = [
     {
-        "name": "JSON",
+        "name": SUBMISSION_FORMAT,
         "available": True,
         "content_type": "application/json",
         "extension": "json",

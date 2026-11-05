@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -24,8 +24,8 @@ BASE ?=
 # no default.
 DMP ?=
 
-# What `make packages-generate` takes, a project's directory or one of its
-# versions; unset, every version of every project.
+# What `make packages-generate` and `dsw-publish` take, a project's directory
+# or one of its versions; unset, every version of every project.
 PROJECT ?=
 
 # Where `make packages-generate` writes the packages it builds; unset, nowhere.
@@ -101,6 +101,19 @@ store-sync: ## Copy the rules and the projects into the database
 
 api-serve: ## Serve the DMP API on 127.0.0.1:8081, until stopped
 	$(RUN_ENV) madmp api serve
+
+##@ DSW (madmp dsw, ENV_FILE=<file>, else the environment)
+
+dsw-admin: ## Make sure of DSW's administrator, DSW_USER
+	$(call run,$(RUN_ENV) madmp dsw admin)
+
+dsw-publish: ## Upload what DSW lacks, refuse a changed one (PROJECT=)
+	$(call run,$(RUN_ENV) madmp dsw publish $(PROJECT))
+
+dsw-submission: ## Set DSW's submission service for the templates it holds
+	$(call run,$(RUN_ENV) madmp dsw submission)
+
+dsw-sync: dsw-admin dsw-publish dsw-submission ## Run dsw-admin, dsw-publish, then dsw-submission
 
 ##@ Tests
 

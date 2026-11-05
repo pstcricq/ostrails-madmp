@@ -4,14 +4,15 @@
 
 Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common Standard](https://github.com/RDA-DMP-Common/RDA-DMP-Common-Standard), extended by the [OSTrails Application Profile for maDMPs](https://docs.ostrails.eu/en/latest/commons/dmp/application-profile.html).
 
-The rules of a maDMP and the projects that use them are versioned files. From them, `madmp` builds the Knowledge Model and the document template a [DS Wizard](https://ds-wizard.org) instance needs, and stores every DMP in a database of its own, through an API that assesses each DMP against the rules it names.
+The rules of a maDMP and the projects that use them are versioned files. From them, `madmp` builds the Knowledge Model and the document template a [DS Wizard](https://ds-wizard.org) instance needs, publishes them to that instance, and stores every DMP it submits in a database of its own, through an API that assesses each DMP against the rules it names.
 
 ## How it works
 
 1. **Rules.** A standard at one version is one JSON file: the base standard, the RDA DMP Common Standard, and the extensions that tighten it, such as the OSTrails profile. An extension may only tighten what the base defines.
 2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from. A published version never changes: a change is a new version.
 3. **Packages.** The pinned rules merge into one model, from which `madmp` builds a DS Wizard Knowledge Model, the questions, and a document template that renders the answers as a maDMP JSON document.
-4. **DMP API.** Each DMP is assessed against the rules its metadata names, then stored version by version in a PostgreSQL database of its own, which holds a copy of the definitions: a project's template DMP first, then the production DMPs filled from it.
+4. **DS Wizard.** The packages are published to the instance, and its submission service sends a document to the DMP API.
+5. **DMP API.** Each DMP is assessed against the rules its metadata names, then stored version by version in a PostgreSQL database of its own, which holds a copy of the definitions: a project's template DMP first, then the production DMPs filled from it.
 
 ## What is here
 
@@ -19,7 +20,7 @@ The rules of a maDMP and the projects that use them are versioned files. From th
 |---|---|
 | [`definitions/rules/`](definitions/rules) | the rules, one JSON file per standard per version, `<standard>/<version>.json`, and `rules.schema.json` |
 | [`definitions/projects/`](definitions/projects) | the projects, one YAML file per project per version, `<id>/<version>.yaml`, and `project.schema.json` |
-| [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages, DMP database, DMP API |
+| [`src/madmp/`](src/madmp) | the `madmp` command: validation, assessment, DS Wizard packages, DMP database, DMP API, DS Wizard instance |
 | [`.env.example`](.env.example) | every value the repository reads, with its local value |
 | [`tests/`](tests) | the unit and integration tests, and the DMPs they assess (`tests/fixtures/`) |
 
@@ -77,6 +78,17 @@ Every request sends its token as `Authorization: Bearer <token>`:
 | `GET /dmps/<key>` | `DMP_READ_TOKEN` or `DMP_WRITE_TOKEN` | the latest version, with its assessment |
 | `GET /dmps/<key>/versions` | the same | every version, without its content |
 | `GET /dmps/<key>/versions/<number>` | the same | one version |
+
+### DS Wizard instance
+
+Any DS Wizard instance, at `DSW_API_URL`.
+
+| | |
+|---|---|
+| `make dsw-admin` | the administrator `DSW_USER`, created on a new instance, its demo accounts deleted |
+| `make dsw-publish` | the packages of every project version the instance does not hold yet, uploaded; one it holds with another content refused (`PROJECT=` limits them to one project) |
+| `make dsw-submission` | the submission service `madmp`, which sends a submitted document to `SUBMISSION_URL` |
+| `make dsw-sync` | the three above, in this order |
 
 ## CI
 
