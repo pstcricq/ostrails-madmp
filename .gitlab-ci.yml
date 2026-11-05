@@ -205,6 +205,7 @@ k8s-check:
     DSW_CLIENT_URL: http://localhost:8090/wizard
     DSW_API_URL: http://localhost:8090/wizard-api
     S3_URL: http://minio:8090
+    DMP_API_URL: http://localhost:8090
     INGRESS_CLASS: traefik
   before_script:
     - apk add --no-cache bash curl gettext kubectl make openssl
@@ -230,6 +231,7 @@ k8s-up:
     DSW_CLIENT_URL: http://localhost:8090/wizard
     DSW_API_URL: http://localhost:8090/wizard-api
     S3_URL: http://minio:8090
+    DMP_API_URL: http://localhost:8090
     INGRESS_CLASS: traefik
     DOCKER_HOST: "tcp://docker:2375"
     # Empty: dind serves plain TCP on 2375.

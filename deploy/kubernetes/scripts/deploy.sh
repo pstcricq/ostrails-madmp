@@ -209,8 +209,7 @@ echo ""
 echo "The stack is up on $CONTEXT, namespace $NS."
 echo "  Client         $DSW_CLIENT_URL"
 echo "  API            $DSW_API_URL"
-echo "  DMP API        kubectl --context $CONTEXT -n $NS port-forward svc/dmp-api 8081"
-echo "                 then http://localhost:8081/dmps/<key>, with DMP_READ_TOKEN or DMP_WRITE_TOKEN"
+echo "  DMP API        $DMP_API_URL/dmps/<key>, with DMP_READ_TOKEN or DMP_WRITE_TOKEN"
 
 # The demo accounts DSW opens with, asked for a token. 201: they log in. 400
 # or 401: the API refuses them. Anything else: asked again, for up to 30 s.

@@ -172,7 +172,7 @@ make k8s-up
 make dsw-sync ENV_FILE=deploy/kubernetes/.env
 ```
 
-The cluster's ingress listens on 127.0.0.1:8090: DS Wizard opens at http://localhost:8090/wizard. The DMP API has no ingress: `kubectl --context k3d-madmp-cluster -n madmp port-forward svc/dmp-api 8081`, then http://localhost:8081.
+The cluster's ingress listens on 127.0.0.1:8090: DS Wizard opens at http://localhost:8090/wizard, the DMP API at http://localhost:8090.
 
 | | |
 |---|---|

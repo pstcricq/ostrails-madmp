@@ -85,8 +85,9 @@ port_of() {
 INGRESS_CLIENT_HOST="$(host_of "$DSW_CLIENT_URL")"
 INGRESS_API_HOST="$(host_of "$DSW_API_URL")"
 INGRESS_S3_HOST="$(host_of "$S3_URL")"
+INGRESS_DMP_API_HOST="$(host_of "$DMP_API_URL")"
 S3_PORT="$(port_of "$S3_URL")"
-export INGRESS_CLIENT_HOST INGRESS_API_HOST INGRESS_S3_HOST S3_PORT
+export INGRESS_CLIENT_HOST INGRESS_API_HOST INGRESS_S3_HOST INGRESS_DMP_API_HOST S3_PORT
 
 # The holes of the template. A secret among them stops the check.
 # shellcheck disable=SC2016 # the characters $ { } removed

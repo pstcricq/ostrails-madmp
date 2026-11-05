@@ -207,6 +207,7 @@ jobs:
       DSW_CLIENT_URL: http://localhost:8090/wizard
       DSW_API_URL: http://localhost:8090/wizard-api
       S3_URL: http://minio:8090
+      DMP_API_URL: http://localhost:8090
       INGRESS_CLASS: traefik
     steps:
       - uses: actions/checkout@v5

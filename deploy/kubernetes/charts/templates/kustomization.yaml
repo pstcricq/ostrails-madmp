@@ -1,9 +1,9 @@
 # The values of the stack, as holes named after the keys of the examples, and
 # the hosts of the ingresses, read from the URLs (INGRESS_CLIENT_HOST from
 # DSW_CLIENT_URL, INGRESS_API_HOST from DSW_API_URL, INGRESS_S3_HOST from
-# S3_URL), and the port of MinIO's Service (S3_PORT, from S3_URL). Filled in a
-# copy of the charts, never in the repository. Every hole is required,
-# including one written in a comment.
+# S3_URL, INGRESS_DMP_API_HOST from DMP_API_URL), and the port of MinIO's
+# Service (S3_PORT, from S3_URL). Filled in a copy of the charts, never in the
+# repository. Every hole is required, including one written in a comment.
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 
@@ -53,6 +53,13 @@ patches:
       - op: replace
         path: /spec/rules/0/host
         value: ${INGRESS_S3_HOST}
+  - target:
+      kind: Ingress
+      name: dmp-api
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: ${INGRESS_DMP_API_HOST}
   # Each PostgreSQL server of the stack, its container and its Service on its
   # port.
   - target:
