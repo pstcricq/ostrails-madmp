@@ -1,6 +1,7 @@
-# One job per make target of the same name, in parallel. Every job installs
-# with `uv sync --locked`, which fails when uv.lock no longer matches
-# pyproject.toml, and UV_LOCKED keeps every `uv run` on uv.lock.
+# One job per make target of the same name, in parallel; docker-up after its
+# check. Every job installs with `uv sync --locked`, which fails when uv.lock
+# no longer matches pyproject.toml, and UV_LOCKED keeps every `uv run` on
+# uv.lock.
 name: CI
 
 on:
@@ -130,7 +131,7 @@ jobs:
   # generated with openssl at each run and masked in the logs.
   docker-check:
     runs-on: ubuntu-latest
-    env:
+    env: &docker-values
       DSW_CLIENT_URL: http://localhost:8080/wizard
       DSW_API_URL: http://localhost:3000/wizard-api
       S3_URL: http://minio:9000
@@ -168,6 +169,32 @@ jobs:
           secret GENERAL_RSA_PRIVATE_KEY "$(openssl genrsa -traditional 4096 2>/dev/null)"
       - name: The values hold, and docker-compose.yml reads with them
         run: make docker-check
+
+  # The test stack on the runner, then DSW's administrator, the packages and
+  # the submission service, twice: the second run changes nothing. minio is
+  # named in /etc/hosts for the links DSW gives into it.
+  docker-up:
+    needs: docker-check
+    runs-on: ubuntu-latest
+    env: *docker-values
+    steps:
+      - uses: actions/checkout@v5
+      - *test-values
+      - *setup-uv
+      - *install
+      - &minio-host
+        name: minio on the runner
+        run: echo "127.0.0.1 minio" | sudo tee -a /etc/hosts
+      - name: Start the stack
+        run: make docker-up
+      - name: DSW's administrator, packages and submission service
+        run: make dsw-sync
+      - name: Again, every package already published, the service unchanged
+        run: make dsw-sync
+      # What every service did, the last lines of each.
+      - name: What every service did
+        if: failure()
+        run: make docker-ps docker-logs n=50
 
   # The same test values, the addresses through the cluster's ingress, and
   # Kubernetes' own keys.

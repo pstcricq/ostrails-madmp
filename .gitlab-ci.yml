@@ -1,6 +1,7 @@
-# One job per make target of the same name, in parallel. Every job installs
-# with `uv sync --locked`, which fails when uv.lock no longer matches
-# pyproject.toml, and UV_LOCKED keeps every `uv run` on uv.lock.
+# One job per make target of the same name, in parallel; docker-up after its
+# check. Every job installs with `uv sync --locked`, which fails when uv.lock
+# no longer matches pyproject.toml, and UV_LOCKED keeps every `uv run` on
+# uv.lock.
 
 # One image for every job, uv installed from PyPI on top, the version
 # pyproject.toml requires.
@@ -165,6 +166,31 @@ docker-check:
     - *test-values
   script:
     - make docker-check
+
+# On a dind daemon on the runner tagged `docker`: it returns once every
+# healthcheck passes.
+docker-up:
+  stage: report
+  needs: [docker-check]
+  tags:
+    - docker
+  image: docker:28
+  services:
+    - docker:28-dind
+  variables:
+    <<: *docker-values
+    DOCKER_HOST: "tcp://docker:2375"
+    # Empty: dind serves plain TCP on 2375.
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - apk add --no-cache bash curl make openssl
+    - *test-values
+  script:
+    - make docker-up
+  # A shell of its own: the values again, for compose.
+  after_script:
+    - *test-values
+    - make docker-ps docker-logs n=50
 
 # kubectl and envsubst from Alpine, kubeconform from its release.
 k8s-check:

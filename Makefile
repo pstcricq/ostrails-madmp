@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check k8s-check k3d-up k3d-down ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check docker-up docker-down docker-ps docker-logs docker-reset k8s-check k3d-up k3d-down ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -33,6 +33,13 @@ OUT ?=
 
 # Every shell script of the repository, for shellcheck.
 SCRIPTS := find . -name '*.sh' -not -path './.*/*'
+
+# The stack under docker compose (deploy/docker/), its values from
+# .env.example, then deploy/docker/.env when the file exists, else from the
+# environment; every profile, so the targets below reach every service the
+# stack runs.
+COMPOSE := docker compose -f deploy/docker/docker-compose.yml --profile "*" --env-file .env.example \
+	$(if $(wildcard deploy/docker/.env),--env-file deploy/docker/.env)
 
 # The local Kubernetes cluster by its name in deploy/kubernetes/k3d.yaml
 # (metadata.name), and its context.
@@ -136,6 +143,22 @@ image-build: ## Build the madmp image of this checkout (IMAGE=madmp:local)
 
 docker-check: ## Check the values, then docker-compose.yml with them
 	$(call run,bash deploy/docker/scripts/check.sh)
+
+docker-up: ## Check, build the madmp image, start the stack and wait
+	$(call run,bash deploy/docker/scripts/prepare.sh)
+
+docker-down: ## Stop the stack, keep its volumes
+	$(call run,$(COMPOSE) down)
+
+docker-ps: ## Show the containers and their health
+	$(call run,$(COMPOSE) ps -a)
+
+docker-logs: ## Follow the logs (s=<name>), or print the last n=<lines>
+	$(COMPOSE) logs $(if $(n),--no-color --tail $(n),-f) $(s)
+
+docker-reset: ## Stop the stack and delete its volumes (its data)
+	printf 'Delete the volumes of the stack, its databases and its bucket? [y/N] ' && read ans && [ "$$ans" = y ]
+	$(call run,$(COMPOSE) down -v)
 
 ##@ k3d (the local Kubernetes cluster, deploy/kubernetes/k3d.yaml)
 

@@ -4,15 +4,34 @@
 
 Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common Standard](https://github.com/RDA-DMP-Common/RDA-DMP-Common-Standard), extended by the [OSTrails Application Profile for maDMPs](https://docs.ostrails.eu/en/latest/commons/dmp/application-profile.html).
 
-The rules of a maDMP and the projects that use them are versioned files. From them, `madmp` builds the Knowledge Model and the document template a [DS Wizard](https://ds-wizard.org) instance needs, publishes them to that instance, and stores every DMP it submits in a database of its own, through an API that assesses each DMP against the rules it names.
+The rules of a maDMP and the projects that use them are versioned files. From them, `madmp` builds the Knowledge Model and the document template a [DS Wizard](https://ds-wizard.org) instance needs, deploys that instance, and stores every DMP it submits in a database of its own, through an API that assesses each DMP against the rules it names.
 
 ## How it works
+
+```mermaid
+flowchart LR
+    rules["<b>Rules</b><br/>RDA DCS, OSTrails profile<br/><i>definitions/rules/</i>"]
+    projects["<b>Projects</b><br/>the rules versions each one pins<br/><i>definitions/projects/</i>"]
+    model["<b>Model</b><br/>the pinned rules, merged"]
+    packages["<b>DSW packages</b><br/>Knowledge Model<br/>document template"]
+    dsw["<b>DS Wizard</b><br/>a researcher writes the DMP"]
+    api["<b>DMP API</b><br/>assesses, stores"]
+    db[("<b>DMP database</b><br/>PostgreSQL")]
+
+    rules --> model
+    projects --> model
+    model -- "madmp packages generate" --> packages
+    packages -- "madmp dsw publish" --> dsw
+    dsw -- "submission service" --> api
+    api --> db
+    projects -- "madmp store sync" --> db
+```
 
 1. **Rules.** A standard at one version is one JSON file: the base standard, the RDA DMP Common Standard, and the extensions that tighten it, such as the OSTrails profile. An extension may only tighten what the base defines.
 2. **Projects.** A project at one version is one YAML file, which pins the rules it is built from. A published version never changes: a change is a new version.
 3. **Packages.** The pinned rules merge into one model, from which `madmp` builds a DS Wizard Knowledge Model, the questions, and a document template that renders the answers as a maDMP JSON document.
 4. **DS Wizard.** The packages are published to the instance, and its submission service sends a document to the DMP API.
-5. **DMP API.** Each DMP is assessed against the rules its metadata names, then stored version by version in a PostgreSQL database of its own, which holds a copy of the definitions: a project's template DMP first, then the production DMPs filled from it.
+5. **DMP API.** Each document is assessed against the rules its metadata names, then stored version by version: a project's template DMP first, then the production DMPs filled from it.
 
 ## What is here
 
@@ -42,6 +61,8 @@ make packages-generate OUT=dsw-packages
 ```
 
 `make install` sets up the locked environment in `.venv`, the `madmp` command and the git hooks. `make help` lists every target, `uv run madmp --help` every command.
+
+To run the whole stack on this machine, DS Wizard and the DMP API with their servers, see [Deploy](#deploy).
 
 ## Commands
 
@@ -84,8 +105,6 @@ Every request sends its token as `Authorization: Bearer <token>`:
 
 ### DS Wizard instance
 
-Any DS Wizard instance, at `DSW_API_URL`.
-
 | | |
 |---|---|
 | `make dsw-admin` | the administrator `DSW_USER`, created on a new instance, its demo accounts deleted |
@@ -119,13 +138,29 @@ grep -E '^[A-Z][A-Z0-9_]*=$' .env.example > deploy/docker/.env
 cat .env.example deploy/kubernetes/.env.example | grep -E '^[A-Z][A-Z0-9_]*=$' > deploy/kubernetes/.env
 ```
 
-Without its file, a target reads the environment.
+Without its file, a target reads the environment. With the stack's own MinIO, the browser finds it through `/etc/hosts`, once:
+
+```bash
+sudo sh -c 'echo "127.0.0.1 minio" >> /etc/hosts'
+```
 
 ### Docker Compose
+
+```bash
+make docker-up
+make dsw-sync ENV_FILE=deploy/docker/.env
+```
+
+DS Wizard opens at http://localhost:8080/wizard, the DMP API at http://localhost:8081.
 
 | | |
 |---|---|
 | `make docker-check` | the values, and `docker-compose.yml` read with them |
+| `make docker-up` | the check, the madmp image built, the stack started, every service healthy |
+| `make docker-ps` | the containers and their health |
+| `make docker-logs` | the logs, `s=<service>` for one, `n=<lines>` for the last ones |
+| `make docker-down` | the stack stopped, its data kept |
+| `make docker-reset` | the stack and its data deleted |
 
 ### Kubernetes
 
@@ -148,7 +183,14 @@ docker run --rm madmp:local madmp --help
 
 ## CI
 
-The same pipeline runs on GitHub Actions and on GitLab CI, one job per make target of the same name: lint, hooks, validation, packages, unit and integration tests, and the checks of the stack. `make ci` runs every check of the CI on this machine.
+The same pipeline runs on GitHub and on GitLab, one job per make target of the same name.
+
+| | GitHub Actions | GitLab CI |
+|---|---|---|
+| Checks | lint, hooks, validation, packages, unit and integration tests | the same |
+| Stacks | `docker-up` on the runner, then `dsw-sync` twice | `docker-up` on a dind daemon |
+
+`make ci` runs every check of the CI on this machine.
 
 ## Test
 
