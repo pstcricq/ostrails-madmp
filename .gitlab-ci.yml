@@ -1,7 +1,7 @@
-# One job per make target of the same name, in parallel; docker-up after its
-# check. Every job installs with `uv sync --locked`, which fails when uv.lock
-# no longer matches pyproject.toml, and UV_LOCKED keeps every `uv run` on
-# uv.lock.
+# One job per make target of the same name, in parallel; docker-up and k8s-up
+# after their check. Every job installs with `uv sync --locked`, which fails
+# when uv.lock no longer matches pyproject.toml, and UV_LOCKED keeps every
+# `uv run` on uv.lock.
 
 # One image for every job, uv installed from PyPI on top, the version
 # pyproject.toml requires.
@@ -209,3 +209,40 @@ k8s-check:
     - *test-values
   script:
     - make k8s-check
+
+# On a dind daemon on the runner tagged `docker`: the cluster of
+# deploy/kubernetes/k3d.yaml created with k3d from its release, then the test
+# stack deployed on it.
+k8s-up:
+  stage: report
+  needs: [k8s-check]
+  tags:
+    - docker
+  image: docker:28
+  services:
+    - docker:28-dind
+  variables:
+    DSW_CLIENT_URL: http://localhost:8090/wizard
+    DSW_API_URL: http://localhost:8090/wizard-api
+    S3_URL: http://minio:8090
+    INGRESS_CLASS: traefik
+    DOCKER_HOST: "tcp://docker:2375"
+    # Empty: dind serves plain TCP on 2375.
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - apk add --no-cache bash curl gettext kubectl make openssl
+    - |
+      curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz \
+        | tar -xz -C /usr/local/bin kubeconform
+      curl -fsSL -o /usr/local/bin/k3d https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
+      chmod +x /usr/local/bin/k3d
+    - *test-values
+  # The Kubernetes API on every address of the dind daemon, which the job
+  # reaches as docker.
+  script:
+    - make k3d-up K3D_ARGS="--api-port docker:6550"
+    - make k8s-up
+  # A shell of its own: the values again, for STACK_NAME.
+  after_script:
+    - *test-values
+    - make k8s-ps k8s-logs n=30

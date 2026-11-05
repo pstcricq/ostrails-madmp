@@ -164,9 +164,24 @@ DS Wizard opens at http://localhost:8080/wizard, the DMP API at http://localhost
 
 ### Kubernetes
 
+On a local [k3d](https://k3d.io) cluster:
+
+```bash
+make k3d-up
+make k8s-up
+make dsw-sync ENV_FILE=deploy/kubernetes/.env
+```
+
+The cluster's ingress listens on 127.0.0.1:8090: DS Wizard opens at http://localhost:8090/wizard. The DMP API has no ingress: `kubectl --context k3d-madmp-cluster -n madmp port-forward svc/dmp-api 8081`, then http://localhost:8081.
+
 | | |
 |---|---|
 | `make k8s-check` | the values, and the charts built with them and validated against the Kubernetes schemas |
+| `make k8s-up` | the check, the madmp image built and imported into k3d, the stack applied, every Deployment ready |
+| `make k8s-ps` | the pods, their state and the last events |
+| `make k8s-logs` | the logs, `s=<service>` for one, `n=<lines>` for the last ones |
+| `make k8s-down` | the stack stopped, its disks kept |
+| `make k8s-reset` | the stack and its disks deleted |
 | `make k3d-up`, `make k3d-down` | the local cluster created, deleted |
 
 ## Image
@@ -188,7 +203,7 @@ The same pipeline runs on GitHub and on GitLab, one job per make target of the s
 | | GitHub Actions | GitLab CI |
 |---|---|---|
 | Checks | lint, hooks, validation, packages, unit and integration tests | the same |
-| Stacks | `docker-up` on the runner, then `dsw-sync` twice | `docker-up` on a dind daemon |
+| Stacks | `docker-up` and `k8s-up` on the runner, then `dsw-sync` twice | `docker-up` and `k8s-up` on a dind daemon |
 
 `make ci` runs every check of the CI on this machine.
 

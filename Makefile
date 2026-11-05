@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check docker-up docker-down docker-ps docker-logs docker-reset k8s-check k3d-up k3d-down ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check docker-up docker-down docker-ps docker-logs docker-reset k8s-check k3d-up k3d-down k8s-up k8s-down k8s-ps k8s-logs k8s-reset ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -45,6 +45,14 @@ COMPOSE := docker compose -f deploy/docker/docker-compose.yml --profile "*" --en
 # (metadata.name), and its context.
 CLUSTER := $(shell sed -n 's/^  name: \(..*\)/\1/p' deploy/kubernetes/k3d.yaml)
 CONTEXT := k3d-$(CLUSTER)
+# The stack's namespace, STACK_NAME, from deploy/kubernetes/.env, else from
+# the environment.
+STACK_NAME := $(or $(firstword $(shell sed -n 's/^STACK_NAME=\(..*\)/\1/p' deploy/kubernetes/.env 2>/dev/null)),$(STACK_NAME))
+KUBECTL := kubectl --context $(CONTEXT) -n $(STACK_NAME)
+
+# What `make k3d-up` adds to `k3d cluster create`, its flags over k3d.yaml;
+# unset, nothing.
+K3D_ARGS ?=
 
 # The image `make image-build` builds, its name and tag.
 IMAGE ?= madmp:local
@@ -163,7 +171,7 @@ docker-reset: ## Stop the stack and delete its volumes (its data)
 ##@ k3d (the local Kubernetes cluster, deploy/kubernetes/k3d.yaml)
 
 k3d-up: ## Create the local Kubernetes cluster
-	$(call run,k3d cluster create --config deploy/kubernetes/k3d.yaml --wait)
+	$(call run,k3d cluster create --config deploy/kubernetes/k3d.yaml $(K3D_ARGS) --wait)
 
 # The current context unset when it was the cluster's, any other left as is.
 k3d-down: ## Delete the cluster and everything on it
@@ -176,6 +184,26 @@ k3d-down: ## Delete the cluster and everything on it
 
 k8s-check: ## Check the values, then build and validate the charts
 	$(call run,bash deploy/kubernetes/scripts/check.sh)
+
+k8s-up: ## Check, import the images into k3d, apply and wait
+	$(call run,bash deploy/kubernetes/scripts/prepare.sh)
+
+k8s-down: ## Stop the stack, keep its disks, Secret and ConfigMap
+	$(call run,$(KUBECTL) scale deployment --all --replicas=0)
+
+k8s-ps: ## Show the pods, their state and the last events
+	$(call run,$(KUBECTL) get pods)
+	$(call run,$(KUBECTL) get events --sort-by=.lastTimestamp | tail -20)
+
+# Without s, every container of the stack, by its part-of label.
+k8s-logs: ## Follow the logs (s=<name>), or print the last n=<lines>
+	$(KUBECTL) logs $(if $(n),--tail $(n),-f) \
+		$(if $(s),deployment/$(s),-l app.kubernetes.io/part-of=madmp --all-containers --prefix --max-log-requests 20)
+
+k8s-reset: ## Delete the stack and its disks (its data)
+	printf 'Delete the namespace $(STACK_NAME) and its disks? [y/N] ' && read ans && [ "$$ans" = y ]
+	echo "Deleting, returns once everything is gone..."
+	$(call run,kubectl --context $(CONTEXT) delete namespace $(STACK_NAME) --ignore-not-found --timeout=5m)
 
 ##@ Tests
 

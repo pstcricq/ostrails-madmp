@@ -1,7 +1,7 @@
-# One job per make target of the same name, in parallel; docker-up after its
-# check. Every job installs with `uv sync --locked`, which fails when uv.lock
-# no longer matches pyproject.toml, and UV_LOCKED keeps every `uv run` on
-# uv.lock.
+# One job per make target of the same name, in parallel; docker-up and k8s-up
+# after their check. Every job installs with `uv sync --locked`, which fails
+# when uv.lock no longer matches pyproject.toml, and UV_LOCKED keeps every
+# `uv run` on uv.lock.
 name: CI
 
 on:
@@ -202,7 +202,7 @@ jobs:
   # release.
   k8s-check:
     runs-on: ubuntu-latest
-    env:
+    env: &k8s-values
       DSW_CLIENT_URL: http://localhost:8090/wizard
       DSW_API_URL: http://localhost:8090/wizard-api
       S3_URL: http://minio:8090
@@ -210,9 +210,40 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - *test-values
-      - name: Install kubeconform
+      - &kubeconform
+        name: Install kubeconform
         run: |
           curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz \
             | sudo tar -xz -C /usr/local/bin kubeconform
       - name: The values hold, and the charts build and validate with them
         run: make k8s-check
+
+  # The k3d cluster on the runner, then the same steps as docker-up.
+  k8s-up:
+    needs: k8s-check
+    runs-on: ubuntu-latest
+    env: *k8s-values
+    steps:
+      - uses: actions/checkout@v5
+      - *test-values
+      - *kubeconform
+      - name: Install k3d
+        run: |
+          sudo curl -fsSL -o /usr/local/bin/k3d \
+            https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
+          sudo chmod +x /usr/local/bin/k3d
+      - *setup-uv
+      - *install
+      - *minio-host
+      - name: Create the cluster
+        run: make k3d-up
+      - name: Deploy the stack
+        run: make k8s-up
+      - name: DSW's administrator, packages and submission service
+        run: make dsw-sync
+      - name: Again, every package already published, the service unchanged
+        run: make dsw-sync
+      # What the stack did, its pods, its events and the last lines of each.
+      - name: What the stack logged
+        if: failure()
+        run: make k8s-ps k8s-logs n=30
