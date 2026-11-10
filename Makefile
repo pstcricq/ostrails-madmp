@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check docker-up docker-down docker-ps docker-logs docker-reset k8s-check k3d-up k3d-down k8s-up k8s-down k8s-ps k8s-logs k8s-reset ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check docker-up docker-down docker-ps docker-logs docker-reset k8s-check k3d-up k3d-down k8s-up k8s-deploy k8s-down k8s-ps k8s-logs k8s-reset ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -53,6 +53,9 @@ KUBECTL := kubectl --context $(CONTEXT) -n $(STACK_NAME)
 # What `make k3d-up` adds to `k3d cluster create`, its flags over k3d.yaml;
 # unset, nothing.
 K3D_ARGS ?=
+
+# The context of kubectl `make k8s-deploy` deploys on, no default.
+KUBE_CONTEXT ?=
 
 # The image `make image-build` builds, its name and tag.
 IMAGE ?= madmp:local
@@ -187,6 +190,10 @@ k8s-check: ## Check the values, then build and validate the charts
 
 k8s-up: ## Check, import the images into k3d, apply and wait
 	$(call run,bash deploy/kubernetes/scripts/prepare.sh)
+
+k8s-deploy: ## Check, find the image, apply on KUBE_CONTEXT=<context>, wait
+	$(if $(KUBE_CONTEXT),,$(error KUBE_CONTEXT is not set: make k8s-deploy KUBE_CONTEXT=<context>))
+	$(call run,bash deploy/kubernetes/scripts/deploy.sh $(KUBE_CONTEXT))
 
 k8s-down: ## Stop the stack, keep its disks, Secret and ConfigMap
 	$(call run,$(KUBECTL) scale deployment --all --replicas=0)

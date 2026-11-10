@@ -5,8 +5,9 @@
 #
 #   bash deploy/kubernetes/scripts/deploy.sh <context>
 #
-#   1. the values and the charts checked, stopping at the first error; the
-#      stack checked is the one applied
+#   1. the values and the charts checked, then the madmp image
+#      MADMP_IMAGE:MADMP_TAG found in its registry, stopping at the first
+#      error; the stack checked is the one applied
 #   2. the context and the namespace STACK_NAME
 #   3. the Secret madmp-secrets
 #   4. apply the stack; the Deployments that read a changed secret restarted
@@ -14,8 +15,8 @@
 #      Deployment that fails goes back to its previous version
 #   6. summary, and whether DSW's demo accounts still log in
 #
-# Sourced, it skips step 1: the values and the stack are those of the script
-# that sources it.
+# Sourced, it skips step 1: the values, the stack and the image are those of
+# the script that sources it.
 
 set -euo pipefail
 
@@ -31,6 +32,21 @@ k() { kubectl --context "$CONTEXT" "$@"; }
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   # shellcheck source-path=SCRIPTDIR source=check.sh
   source "$(dirname "${BASH_SOURCE[0]}")/check.sh"
+
+  # The image the cluster pulls, read from its registry by docker's client,
+  # with this machine's accounts, no daemon needed.
+  if ! command -v docker > /dev/null; then
+    echo "error: docker not found, needed to find the madmp image" >&2
+    exit 1
+  fi
+  if ! problem="$(docker manifest inspect "$MADMP_IMAGE:$MADMP_TAG" 2>&1 > /dev/null)"; then
+    echo "" >&2
+    echo "error: the madmp image $MADMP_IMAGE:$MADMP_TAG is not in its registry, or not" >&2
+    echo "readable without an account; nothing was applied. The registry answered:" >&2
+    printf '%s\n' "${problem:-nothing}" | sed 's/^/  /' >&2
+    exit 1
+  fi
+  printf '  %-29s %s\n' image "$MADMP_IMAGE:$MADMP_TAG in its registry"
 fi
 
 # --- 2. Target --------------------------------------------------------------

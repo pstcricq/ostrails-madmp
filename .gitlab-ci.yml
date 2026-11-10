@@ -1,8 +1,9 @@
 # One job per make target of the same name, in parallel; docker-up and k8s-up
 # after their check, image-publish after every other job, on the default
-# branch and on a version tag. Every job installs with `uv sync --locked`,
-# which fails when uv.lock no longer matches pyproject.toml, and UV_LOCKED
-# keeps every `uv run` on uv.lock.
+# branch and on a version tag. Then, by hand on the default branch, k8s-deploy
+# and dsw-sync on the environment development. Every job installs with
+# `uv sync --locked`, which fails when uv.lock no longer matches
+# pyproject.toml, and UV_LOCKED keeps every `uv run` on uv.lock.
 
 # One image for every job, uv installed from PyPI on top, the version
 # pyproject.toml requires.
@@ -26,6 +27,7 @@ workflow:
 
 stages:
   - report
+  - deploy
 
 # What every job does before its own step: make, which runs it, then the
 # environment.
@@ -285,3 +287,44 @@ image-publish:
       tags="--tag $CI_REGISTRY_IMAGE:sha-$(echo "$CI_COMMIT_SHA" | cut -c1-7)"
       if [ -n "$CI_COMMIT_TAG" ]; then tags="$tags --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"; fi
       docker buildx build --platform linux/amd64,linux/arm64 --provenance=false --push $tags .
+
+# The stack on the cluster of the environment development, by hand, from the
+# default branch once every check passed. Its values are the variables of the
+# environment, the kubeconfig of the deploy account the File variable
+# KUBECONFIG; the madmp image is the one of this commit, MADMP_IMAGE tagged
+# sha-<commit>, which the GitHub CI publishes: the job stops before applying
+# anything while it is not there.
+k8s-deploy:
+  stage: deploy
+  image: alpine:3.22
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  environment:
+    name: development
+    url: $DSW_CLIENT_URL
+  resource_group: development
+  # docker's client alone, which reads the image from its registry.
+  before_script:
+    - apk add --no-cache bash curl docker-cli gettext kubectl make
+    - |
+      curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz \
+        | tar -xz -C /usr/local/bin kubeconform
+  script:
+    - export MADMP_TAG="sha-$(echo "$CI_COMMIT_SHA" | cut -c1-7)"
+    - make k8s-deploy KUBE_CONTEXT=gitlab-deploy
+
+# DSW's administrator, packages and submission service, on the stack
+# k8s-deploy just deployed, from the same variables.
+dsw-sync:
+  extends: .python
+  stage: deploy
+  needs: [k8s-deploy]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  environment:
+    name: development
+    action: access
+  resource_group: development
+  script:
+    - make dsw-sync

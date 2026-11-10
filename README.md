@@ -174,10 +174,18 @@ make dsw-sync ENV_FILE=deploy/kubernetes/.env
 
 The cluster's ingress listens on 127.0.0.1:8090: DS Wizard opens at http://localhost:8090/wizard, the DMP API at http://localhost:8090.
 
+On any other cluster, its namespace `STACK_NAME` created there beforehand, the madmp image pulled from `MADMP_IMAGE`, found in its registry before anything is applied:
+
+```bash
+make k8s-deploy KUBE_CONTEXT=<context of kubectl>
+make dsw-sync ENV_FILE=deploy/kubernetes/.env
+```
+
 | | |
 |---|---|
 | `make k8s-check` | the values, and the charts built with them and validated against the Kubernetes schemas |
 | `make k8s-up` | the check, the madmp image built and imported into k3d, the stack applied, every Deployment ready |
+| `make k8s-deploy` | the check, the madmp image found in its registry, the stack applied on `KUBE_CONTEXT`, every Deployment ready, one that fails rolled back |
 | `make k8s-ps` | the pods, their state and the last events |
 | `make k8s-logs` | the logs, `s=<service>` for one, `n=<lines>` for the last ones |
 | `make k8s-down` | the stack stopped, its disks kept |
@@ -196,7 +204,7 @@ The image `madmp:local` (`IMAGE=<name>:<tag>`) serves the DMP API on port 8081 b
 docker run --rm madmp:local madmp --help
 ```
 
-## CI
+## CI and CD
 
 The same pipeline runs on GitHub and on GitLab, one job per make target of the same name.
 
@@ -205,6 +213,7 @@ The same pipeline runs on GitHub and on GitLab, one job per make target of the s
 | Checks | lint, hooks, validation, packages, unit and integration tests | the same |
 | Stacks | `docker-up` and `k8s-up` on the runner, then `dsw-sync` twice | `docker-up` and `k8s-up` on a dind daemon |
 | Image | `ghcr.io/pstcricq/madmp:sha-<commit>`, amd64 and arm64 | the project's registry, same tags |
+| Deploy | none | `k8s-deploy` by hand on the default branch, then `dsw-sync`, from the variables of the environment `development` |
 
 `make ci` runs every check of the CI on this machine.
 
