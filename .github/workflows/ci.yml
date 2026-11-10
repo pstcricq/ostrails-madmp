@@ -1,7 +1,8 @@
 # One job per make target of the same name, in parallel; docker-up and k8s-up
-# after their check, image-publish after every other job, on a push. Every job
-# installs with `uv sync --locked`, which fails when uv.lock no longer matches
-# pyproject.toml, and UV_LOCKED keeps every `uv run` on uv.lock.
+# after their check, image-publish and docs-publish after every other job, on a
+# push, the site from main. Every job installs with `uv sync --locked`, which
+# fails when uv.lock no longer matches pyproject.toml, and UV_LOCKED keeps every
+# `uv run` on uv.lock.
 name: CI
 
 on:
@@ -126,6 +127,20 @@ jobs:
       - *install-api
       - name: The integration tests
         run: make test-integration
+
+  # The documentation site, every warning an error, kept for docs-publish.
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - *setup-uv
+      - name: Install the locked environment and the docs group
+        run: uv sync --locked --group docs
+      - name: The site, strict
+        run: make docs-build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/
 
   # The values of a test stack, the empty keys of the examples: what differs
   # per target in the env of its jobs, the other variables, then the secrets,
@@ -257,7 +272,8 @@ jobs:
     if: github.event_name == 'push'
     needs: [lint, pre-commit, validate-rules, validate-projects,
             validate-models, validate-frozen, packages-generate, test-unit,
-            test-integration, docker-check, docker-up, k8s-check, k8s-up]
+            test-integration, docker-check, docker-up, k8s-check, k8s-up,
+            docs-build]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -289,3 +305,21 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # The site of docs-build on GitHub Pages, from main once every check passes.
+  docs-publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, pre-commit, validate-rules, validate-projects,
+            validate-models, validate-frozen, packages-generate, test-unit,
+            test-integration, docker-check, docker-up, k8s-check, k8s-up,
+            docs-build]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

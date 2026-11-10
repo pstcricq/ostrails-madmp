@@ -16,8 +16,10 @@ repos:
     hooks:
       - id: check-merge-conflict
       - id: check-yaml
-        # The Kubernetes manifests hold several objects each.
+        # The Kubernetes manifests hold several objects each. mkdocs.yml
+        # carries !!python/name tags, read by `make docs-build`.
         args: [--allow-multiple-documents]
+        exclude: ^mkdocs\.yml$
       - id: check-json
       - id: check-toml
       - id: check-added-large-files

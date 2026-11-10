@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check docker-up docker-down docker-ps docker-logs docker-reset k8s-check k3d-up k3d-down k8s-up k8s-deploy k8s-down k8s-ps k8s-logs k8s-reset ci clean
+.PHONY: help install lint format pre-commit test-all test-unit test-integration validate-all validate-rules validate-projects validate-models validate-frozen assess-conformance packages-generate store-migrate store-sync api-serve dsw-admin dsw-publish dsw-submission dsw-sync image-build docker-check docker-up docker-down docker-ps docker-logs docker-reset k8s-check k3d-up k3d-down k8s-up k8s-deploy k8s-down k8s-ps k8s-logs k8s-reset docs-serve docs-build ci clean
 .SILENT:
 
 # Blank line once at the top of the output, then one after each command.
@@ -212,6 +212,14 @@ k8s-reset: ## Delete the stack and its disks (its data)
 	echo "Deleting, returns once everything is gone..."
 	$(call run,kubectl --context $(CONTEXT) delete namespace $(STACK_NAME) --ignore-not-found --timeout=5m)
 
+##@ Documentation (mkdocs.yml, docs/)
+
+docs-serve: ## Serve the site on 127.0.0.1:8000, reloaded on save
+	NO_MKDOCS_2_WARNING=1 $(RUN) --group docs mkdocs serve
+
+docs-build: ## Build the site into site/, every warning an error
+	$(call run,NO_MKDOCS_2_WARNING=1 $(RUN) --group docs mkdocs build --strict)
+
 ##@ Tests
 
 test-all: test-unit test-integration ## Run every test: unit, then integration
@@ -224,7 +232,7 @@ test-integration: ## Run the tests that need a PostgreSQL (docker)
 
 ##@ CI
 
-ci: lint pre-commit validate-all packages-generate test-all docker-check k8s-check ## Everything the CI checks, in this order
+ci: lint pre-commit validate-all packages-generate test-all docker-check k8s-check docs-build ## Everything the CI checks, in this order
 
 ##@ Cleanup
 

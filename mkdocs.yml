@@ -1,0 +1,170 @@
+# The documentation site: `make docs-serve` to read it, `make docs-build` to
+# check it, the pages under docs/.
+site_name: madmp
+site_description: >-
+  Rules-driven machine-actionable DMPs: one declarative rule set generates the
+  DS Wizard questionnaire, the document template and the assessment of every
+  DMP. The SOCIB thematic pilot of OSTrails.
+site_url: https://pstcricq.github.io/ostrails-madmp/
+repo_url: https://github.com/pstcricq/ostrails-madmp
+repo_name: pstcricq/ostrails-madmp
+edit_uri: edit/main/docs/
+site_author: Pierre St-Cricq dit Lompre
+copyright: >-
+  Copyright &copy; 2026 Pierre St-Cricq dit Lompre, SOCIB. Code and
+  documentation under Apache-2.0. OSTrails is funded by the European Union,
+  grant agreement 101130187.
+
+# Every broken link or anchor is a warning, and `--strict` turns it into an
+# error.
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+nav:
+  - Home: index.md
+  - The case:
+      - Context: case/context.md
+      - The problem: case/problem.md
+      - The principle: case/principle.md
+  - Getting started: getting-started.md
+  - Guide:
+      - Architecture: guide/architecture.md
+      - Rules: guide/rules.md
+      - Projects: guide/projects.md
+      - Assessment: guide/assessment.md
+      - Knowledge model: guide/knowledge-model.md
+      - Document template: guide/document-template.md
+      - Identifiers: guide/identifiers.md
+      - DMP database: guide/database.md
+      - DMP API: guide/api.md
+      - DS Wizard: guide/dsw.md
+  - Deployment:
+      - Overview: deployment/index.md
+      - Values: deployment/values.md
+      - Docker Compose: deployment/docker.md
+      - Kubernetes: deployment/kubernetes.md
+      - CI and CD: deployment/ci-cd.md
+      - Operations: deployment/operations.md
+  - Development: development.md
+  - Code reference:
+      - reference/index.md
+      - Command line: reference/cli.md
+      - Definitions: reference/definitions.md
+      - Model: reference/model.md
+      - Assessment: reference/assessment.md
+      - Packages: reference/packages.md
+      - DMP database: reference/store.md
+      - DMP API: reference/api.md
+      - DS Wizard: reference/dsw.md
+      - Errors: reference/errors.md
+  - Project:
+      - D4.3: project/d4-3.md
+      - Engineering practices: project/practices.md
+      - Lessons: project/lessons.md
+      - Known limits: project/limits.md
+      - What is next: project/next.md
+      - References: project/references.md
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+  icon:
+    logo: material/file-tree-outline
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.instant
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - search.highlight
+    - search.suggest
+
+plugins:
+  - search
+  - glightbox
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            docstring_style: sphinx
+            filters: ["!^_"]
+            heading_level: 2
+            separate_signature: true
+            show_signature_annotations: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+# The author's and the project's links, in the footer of every page.
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/pstcricq
+      name: Pierre St-Cricq dit Lompre on GitHub
+    - icon: material/email-outline
+      link: mailto:pstcricq@socib.es
+      name: pstcricq@socib.es
+    - icon: material/waves
+      link: https://www.socib.es
+      name: SOCIB
+    - icon: material/earth
+      link: https://ostrails.eu
+      name: OSTrails
+
+extra_css:
+  - stylesheets/extra.css

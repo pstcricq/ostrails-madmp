@@ -42,6 +42,8 @@ dev = [
     "shellcheck-py",
     "pre-commit",
 ]
+# The documentation site and its code reference, with `uv run --group docs`.
+docs = ["mkdocs-material", "mkdocs-glightbox", "mkdocstrings[python]"]
 
 # Any other uv refuses to run on this project.
 [tool.uv]

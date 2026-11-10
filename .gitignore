@@ -13,3 +13,6 @@ __pycache__/
 
 # Editor settings.
 .vscode/
+
+# The documentation site mkdocs builds.
+site/

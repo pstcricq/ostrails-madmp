@@ -1,8 +1,10 @@
 # madmp
 
-[![CI](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml) [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![uv](https://img.shields.io/badge/uv-0.12.5-DE5FE9?logo=uv&logoColor=white)](https://docs.astral.sh/uv/) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![FastAPI](https://img.shields.io/badge/FastAPI-DMP%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com) [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org) [![DS Wizard 4.31](https://img.shields.io/badge/DS%20Wizard-4.31-1F6FB2)](https://ds-wizard.org) [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](deploy/docker) [![Kubernetes 1.30](https://img.shields.io/badge/Kubernetes-1.30-326CE5?logo=kubernetes&logoColor=white)](deploy/kubernetes) [![Image](https://img.shields.io/badge/image-ghcr.io%2Fpstcricq%2Fmadmp-2496ED?logo=docker&logoColor=white)](https://github.com/pstcricq/ostrails-madmp/pkgs/container/madmp) [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![CI](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pstcricq/ostrails-madmp/actions/workflows/ci.yml) [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![uv](https://img.shields.io/badge/uv-0.12.5-DE5FE9?logo=uv&logoColor=white)](https://docs.astral.sh/uv/) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![FastAPI](https://img.shields.io/badge/FastAPI-DMP%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com) [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org) [![DS Wizard 4.31](https://img.shields.io/badge/DS%20Wizard-4.31-1F6FB2)](https://ds-wizard.org) [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](deploy/docker) [![Kubernetes 1.30](https://img.shields.io/badge/Kubernetes-1.30-326CE5?logo=kubernetes&logoColor=white)](deploy/kubernetes) [![Image](https://img.shields.io/badge/image-ghcr.io%2Fpstcricq%2Fmadmp-2496ED?logo=docker&logoColor=white)](https://github.com/pstcricq/ostrails-madmp/pkgs/container/madmp) [![Documentation](https://img.shields.io/badge/docs-pstcricq.github.io-0b3d62?logo=materialformkdocs&logoColor=white)](https://pstcricq.github.io/ostrails-madmp/) [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 Machine-actionable Data Management Plans (maDMPs) following the [RDA DMP Common Standard](https://github.com/RDA-DMP-Common/RDA-DMP-Common-Standard), extended by the [OSTrails Application Profile for maDMPs](https://docs.ostrails.eu/en/latest/commons/dmp/application-profile.html).
+
+The full documentation, the case study and the technical guide, is at **<https://pstcricq.github.io/ostrails-madmp/>**.
 
 The rules of a maDMP and the projects that use them are versioned files. From them, `madmp` builds the Knowledge Model and the document template a [DS Wizard](https://ds-wizard.org) instance needs, deploys that instance, and stores every DMP it submits in a database of its own, through an API that assesses each DMP against the rules it names.
 
@@ -225,6 +227,14 @@ make lint
 ```
 
 `make test-unit` needs nothing but the repository. `make test-integration` starts a PostgreSQL with docker, and checks the DMP database, the API, the image, and the document each project version's template renders. `make lint` checks the Python and the shell scripts, `make format` fixes what it can, `make pre-commit` runs every hook on every file.
+
+## Documentation
+
+```bash
+make docs-serve
+```
+
+The site on http://127.0.0.1:8000, reloaded on save; `make docs-build` builds it into `site/`, every warning an error. The pages are under [`docs/`](docs), the code reference generated from the docstrings.
 
 ## Licence
 
